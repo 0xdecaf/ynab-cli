@@ -88,6 +88,9 @@ jobs:
     name: Publish to npm
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +98,9 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm for OIDC support
+        run: npm install -g npm@latest
 
       - name: Set package version from tag
         run: |
@@ -108,6 +114,4 @@ jobs:
           echo "Publishing ynab-cli-rs@${VERSION}"
 
       - name: Publish to npm
-        run: cd npm && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm && npm publish --access public --provenance

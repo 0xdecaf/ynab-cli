@@ -10,7 +10,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/0xdecaf/ynab-cli"
+    "url": "git+https://github.com/0xdecaf/ynab-cli.git"
+  },
+  "publishConfig": {
+    "provenance": true
   },
   "keywords": [
     "ynab",
