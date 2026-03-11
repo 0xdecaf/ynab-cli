@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod api;
 pub mod auth;
 pub mod categories;
 pub mod money_movements;

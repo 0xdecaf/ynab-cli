@@ -557,6 +557,130 @@ impl YnabClient {
         Ok(resp.data.payee_locations)
     }
 
+    // --- Category Mutations ---
+
+    pub async fn update_category(
+        &self,
+        plan_id: &str,
+        category_id: &str,
+        category: &serde_json::Value,
+    ) -> Result<Category, YnabError> {
+        let body = serde_json::json!({ "category": category });
+        let resp: ApiResponse<CategoryData> = self
+            .patch(&format!("/plans/{plan_id}/categories/{category_id}"), &body)
+            .await?;
+        Ok(resp.data.category)
+    }
+
+    pub async fn get_month_category(
+        &self,
+        plan_id: &str,
+        month: &str,
+        category_id: &str,
+    ) -> Result<Category, YnabError> {
+        let resp: ApiResponse<CategoryData> = self
+            .get(&format!(
+                "/plans/{plan_id}/months/{month}/categories/{category_id}"
+            ))
+            .await?;
+        Ok(resp.data.category)
+    }
+
+    pub async fn update_category_month(
+        &self,
+        plan_id: &str,
+        month: &str,
+        category_id: &str,
+        budgeted: i64,
+    ) -> Result<Category, YnabError> {
+        let body = serde_json::json!({ "category": { "budgeted": budgeted } });
+        let resp: ApiResponse<CategoryData> = self
+            .patch(
+                &format!("/plans/{plan_id}/months/{month}/categories/{category_id}"),
+                &body,
+            )
+            .await?;
+        Ok(resp.data.category)
+    }
+
+    // --- Payee Mutations ---
+
+    pub async fn update_payee(
+        &self,
+        plan_id: &str,
+        payee_id: &str,
+        payee: &serde_json::Value,
+    ) -> Result<Payee, YnabError> {
+        let body = serde_json::json!({ "payee": payee });
+        let resp: ApiResponse<PayeeData> = self
+            .patch(&format!("/plans/{plan_id}/payees/{payee_id}"), &body)
+            .await?;
+        Ok(resp.data.payee)
+    }
+
+    // --- Scheduled Transaction Mutations ---
+
+    pub async fn delete_scheduled_transaction(
+        &self,
+        plan_id: &str,
+        scheduled_transaction_id: &str,
+    ) -> Result<ScheduledTransactionDetail, YnabError> {
+        let resp: ApiResponse<ScheduledTransactionData> = self
+            .delete_request(&format!(
+                "/plans/{plan_id}/scheduled_transactions/{scheduled_transaction_id}"
+            ))
+            .await?;
+        Ok(resp.data.scheduled_transaction)
+    }
+
+    // --- Raw API ---
+
+    pub async fn raw_request(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, YnabError> {
+        self.check_rate_limit()?;
+        self.rate_limiter.record();
+        let url = format!("{BASE_URL}{path}");
+        let request = match method.to_uppercase().as_str() {
+            "GET" => self.http.get(&url),
+            "POST" => {
+                let req = self.http.post(&url);
+                if let Some(b) = body {
+                    req.json(b)
+                } else {
+                    req.json(&serde_json::json!({}))
+                }
+            }
+            "PUT" => {
+                let req = self.http.put(&url);
+                if let Some(b) = body {
+                    req.json(b)
+                } else {
+                    req.json(&serde_json::json!({}))
+                }
+            }
+            "PATCH" => {
+                let req = self.http.patch(&url);
+                if let Some(b) = body {
+                    req.json(b)
+                } else {
+                    req.json(&serde_json::json!({}))
+                }
+            }
+            "DELETE" => self.http.delete(&url),
+            _ => {
+                return Err(YnabError::Other(format!(
+                    "Unsupported HTTP method: {method}"
+                )));
+            }
+        };
+        let response = request.send().await?;
+        self.handle_response(response).await
+    }
+
     // --- Money Movements ---
 
     pub async fn get_money_movements(

@@ -1,14 +1,14 @@
 use anyhow::Result;
 use ynab_client::YnabClient;
 
-use crate::cli::{OutputFormat, ScheduledCommand};
+use crate::cli::ScheduledCommand;
 use crate::commands::plans::resolve_plan_id;
-use crate::output;
+use crate::output::{self, OutputConfig};
 
 pub async fn run(
     client: &YnabClient,
     command: &ScheduledCommand,
-    format: &OutputFormat,
+    out: &OutputConfig<'_>,
     plan_id: Option<&str>,
     dry_run: bool,
 ) -> Result<()> {
@@ -23,14 +23,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/scheduled_transactions"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client
                 .get_scheduled_transactions(&plan_id, *last_knowledge)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         ScheduledCommand::Get {
@@ -45,14 +45,36 @@ pub async fn run(
                         ),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let txn = client
                 .get_scheduled_transaction(&plan_id, scheduled_transaction_id)
                 .await?;
-            output::output(&txn, format)?;
+            output::output(&txn, out)?;
+        }
+
+        ScheduledCommand::Delete {
+            scheduled_transaction_id,
+        } => {
+            if dry_run {
+                output::output(
+                    &client.dry_run_request(
+                        "DELETE",
+                        &format!(
+                            "/plans/{plan_id}/scheduled_transactions/{scheduled_transaction_id}"
+                        ),
+                        None,
+                    ),
+                    out,
+                )?;
+                return Ok(());
+            }
+            let txn = client
+                .delete_scheduled_transaction(&plan_id, scheduled_transaction_id)
+                .await?;
+            output::output(&txn, out)?;
         }
     }
     Ok(())

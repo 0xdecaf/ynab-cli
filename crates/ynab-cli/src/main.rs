@@ -8,6 +8,7 @@ use clap::{CommandFactory, Parser};
 use ynab_client::{YnabClient, auth};
 
 use cli::{Cli, Command};
+use output::OutputConfig;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -42,40 +43,50 @@ async fn main() -> Result<()> {
             let token = auth::resolve_token(cli.token.as_deref())?;
             let client = YnabClient::new(token)?;
             let plan_id = cli.plan_id.as_deref();
-            let format = &cli.output_format;
             let dry_run = cli.dry_run;
+
+            let out = OutputConfig {
+                format: &cli.output_format,
+                dollars: cli.dollars,
+                fields: cli.fields.as_deref(),
+                output_path: cli.output.as_deref(),
+            };
 
             match &cli.command {
                 Command::User { command } => {
-                    commands::user::run(&client, command, format, dry_run).await?;
+                    commands::user::run(&client, command, &out, dry_run).await?;
                 }
                 Command::Plans { command } => {
-                    commands::plans::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::plans::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::Accounts { command } => {
-                    commands::accounts::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::accounts::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::Transactions { command } => {
-                    commands::transactions::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::transactions::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::Categories { command } => {
-                    commands::categories::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::categories::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::Payees { command } => {
-                    commands::payees::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::payees::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::PayeeLocations { command } => {
-                    commands::payee_locations::run(&client, command, format, plan_id, dry_run)
+                    commands::payee_locations::run(&client, command, &out, plan_id, dry_run)
                         .await?;
                 }
                 Command::Months { command } => {
-                    commands::months::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::months::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::Scheduled { command } => {
-                    commands::scheduled::run(&client, command, format, plan_id, dry_run).await?;
+                    commands::scheduled::run(&client, command, &out, plan_id, dry_run).await?;
                 }
                 Command::MoneyMovements { command } => {
-                    commands::money_movements::run(&client, command, format, plan_id, dry_run)
+                    commands::money_movements::run(&client, command, &out, plan_id, dry_run)
+                        .await?;
+                }
+                Command::Api { method, path, body } => {
+                    commands::api::run(&client, method, path, body.as_deref(), &out, dry_run)
                         .await?;
                 }
                 // Already handled above

@@ -1,14 +1,14 @@
 use anyhow::Result;
 use ynab_client::YnabClient;
 
-use crate::cli::{OutputFormat, PayeesCommand};
+use crate::cli::PayeesCommand;
 use crate::commands::plans::resolve_plan_id;
-use crate::output;
+use crate::output::{self, OutputConfig};
 
 pub async fn run(
     client: &YnabClient,
     command: &PayeesCommand,
-    format: &OutputFormat,
+    out: &OutputConfig<'_>,
     plan_id: Option<&str>,
     dry_run: bool,
 ) -> Result<()> {
@@ -19,12 +19,12 @@ pub async fn run(
             if dry_run {
                 output::output(
                     &client.dry_run_request("GET", &format!("/plans/{plan_id}/payees"), None),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client.get_payees(&plan_id, *last_knowledge).await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         PayeesCommand::Get { payee_id } => {
@@ -35,12 +35,30 @@ pub async fn run(
                         &format!("/plans/{plan_id}/payees/{payee_id}"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let payee = client.get_payee(&plan_id, payee_id).await?;
-            output::output(&payee, format)?;
+            output::output(&payee, out)?;
+        }
+
+        PayeesCommand::Update { payee_id, json } => {
+            let payee: serde_json::Value = serde_json::from_str(json)?;
+            if dry_run {
+                let body = serde_json::json!({ "payee": payee });
+                output::output(
+                    &client.dry_run_request(
+                        "PATCH",
+                        &format!("/plans/{plan_id}/payees/{payee_id}"),
+                        Some(&body),
+                    ),
+                    out,
+                )?;
+                return Ok(());
+            }
+            let result = client.update_payee(&plan_id, payee_id, &payee).await?;
+            output::output(&result, out)?;
         }
     }
     Ok(())

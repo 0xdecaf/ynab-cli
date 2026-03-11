@@ -1,14 +1,14 @@
 use anyhow::Result;
 use ynab_client::YnabClient;
 
-use crate::cli::{MoneyMovementsCommand, OutputFormat};
+use crate::cli::MoneyMovementsCommand;
 use crate::commands::plans::resolve_plan_id;
-use crate::output;
+use crate::output::{self, OutputConfig};
 
 pub async fn run(
     client: &YnabClient,
     command: &MoneyMovementsCommand,
-    format: &OutputFormat,
+    out: &OutputConfig<'_>,
     plan_id: Option<&str>,
     dry_run: bool,
 ) -> Result<()> {
@@ -23,14 +23,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/money_movements"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client
                 .get_money_movements(&plan_id, *last_knowledge)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         MoneyMovementsCommand::ByMonth {
@@ -44,15 +44,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/months/{month}/money_movements"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
-            // Uses same endpoint with month filter
             let data = client
                 .get_money_movements(&plan_id, *last_knowledge)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         MoneyMovementsCommand::Groups { last_knowledge } => {
@@ -63,14 +62,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/money_movement_groups"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client
                 .get_money_movement_groups(&plan_id, *last_knowledge)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         MoneyMovementsCommand::GroupsByMonth {
@@ -84,14 +83,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/months/{month}/money_movement_groups"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client
                 .get_money_movement_groups(&plan_id, *last_knowledge)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
     }
     Ok(())

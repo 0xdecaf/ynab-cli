@@ -36,6 +36,18 @@ pub struct Cli {
     /// Show HTTP request/response details
     #[arg(long, global = true)]
     pub verbose: bool,
+
+    /// Convert milliunit amounts to dollars (divide by 1000)
+    #[arg(long, global = true)]
+    pub dollars: bool,
+
+    /// Filter output to specified fields (comma-separated, e.g., "id,date,amount")
+    #[arg(long, global = true)]
+    pub fields: Option<String>,
+
+    /// Write output to a file instead of stdout
+    #[arg(long, global = true)]
+    pub output: Option<String>,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -128,6 +140,17 @@ pub enum Command {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
+
+    /// Make a raw API request (any method, any path)
+    Api {
+        /// HTTP method (GET, POST, PUT, PATCH, DELETE)
+        method: String,
+        /// API path (e.g., /v1/plans)
+        path: String,
+        /// Request body as JSON
+        #[arg(long)]
+        body: Option<String>,
+    },
 }
 
 // --- Auth ---
@@ -177,6 +200,11 @@ pub enum PlansCommand {
         /// Plan ID (uses --plan-id if not specified)
         #[arg(long)]
         id: Option<String>,
+    },
+    /// Set the default plan ID (saved to config)
+    SetDefault {
+        /// Plan ID to set as default
+        id: String,
     },
 }
 
@@ -293,6 +321,24 @@ pub enum TransactionsCommand {
         #[arg(long)]
         last_knowledge: Option<i64>,
     },
+    /// Search transactions by memo or payee name (client-side filtering)
+    Search {
+        /// Search in memo field (case-insensitive substring match)
+        #[arg(long)]
+        memo: Option<String>,
+        /// Search in payee name field (case-insensitive substring match)
+        #[arg(long)]
+        payee_name: Option<String>,
+        /// Only return transactions on or after this date (YYYY-MM-DD)
+        #[arg(long)]
+        since_date: Option<String>,
+        /// Maximum amount in milliunits
+        #[arg(long)]
+        max_amount: Option<i64>,
+        /// Minimum amount in milliunits
+        #[arg(long)]
+        min_amount: Option<i64>,
+    },
 }
 
 // --- Categories ---
@@ -316,6 +362,27 @@ pub enum CategoriesCommand {
         #[arg(long)]
         category_id: String,
     },
+    /// Update a category (name, note, etc.)
+    Update {
+        /// Category ID to update
+        #[arg(long)]
+        category_id: String,
+        /// Updated category data as JSON
+        #[arg(long)]
+        json: String,
+    },
+    /// Set the budgeted amount for a category in a specific month
+    Budget {
+        /// Month in YYYY-MM-DD format (e.g., 2026-03-01)
+        #[arg(long)]
+        month: String,
+        /// Category ID
+        #[arg(long)]
+        category_id: String,
+        /// Budgeted amount in milliunits (1000 = $1.00)
+        #[arg(long)]
+        budgeted: i64,
+    },
 }
 
 // --- Payees ---
@@ -331,6 +398,15 @@ pub enum PayeesCommand {
     Get {
         #[arg(long)]
         payee_id: String,
+    },
+    /// Update a payee (rename)
+    Update {
+        /// Payee ID to update
+        #[arg(long)]
+        payee_id: String,
+        /// Updated payee data as JSON (e.g., '{"name": "New Name"}')
+        #[arg(long)]
+        json: String,
     },
 }
 
@@ -380,6 +456,11 @@ pub enum ScheduledCommand {
     },
     /// Get a single scheduled transaction
     Get {
+        #[arg(long)]
+        scheduled_transaction_id: String,
+    },
+    /// Delete a scheduled transaction
+    Delete {
         #[arg(long)]
         scheduled_transaction_id: String,
     },

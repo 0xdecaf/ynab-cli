@@ -2,14 +2,14 @@ use anyhow::Result;
 use ynab_client::YnabClient;
 use ynab_types::SaveTransaction;
 
-use crate::cli::{OutputFormat, TransactionsCommand};
+use crate::cli::TransactionsCommand;
 use crate::commands::plans::resolve_plan_id;
-use crate::output;
+use crate::output::{self, OutputConfig};
 
 pub async fn run(
     client: &YnabClient,
     command: &TransactionsCommand,
-    format: &OutputFormat,
+    out: &OutputConfig<'_>,
     plan_id: Option<&str>,
     dry_run: bool,
 ) -> Result<()> {
@@ -24,7 +24,7 @@ pub async fn run(
             if dry_run {
                 output::output(
                     &client.dry_run_request("GET", &format!("/plans/{plan_id}/transactions"), None),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
@@ -36,7 +36,7 @@ pub async fn run(
                     *last_knowledge,
                 )
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::Get { transaction_id } => {
@@ -47,12 +47,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/transactions/{transaction_id}"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let txn = client.get_transaction(&plan_id, transaction_id).await?;
-            output::output(&txn, format)?;
+            output::output(&txn, out)?;
         }
 
         TransactionsCommand::Create { json } => {
@@ -65,12 +65,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/transactions"),
                         Some(&body),
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client.create_transaction(&plan_id, &transaction).await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::Update {
@@ -86,14 +86,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/transactions/{transaction_id}"),
                         Some(&body),
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let txn = client
                 .update_transaction(&plan_id, transaction_id, &transaction)
                 .await?;
-            output::output(&txn, format)?;
+            output::output(&txn, out)?;
         }
 
         TransactionsCommand::UpdateBulk { json } => {
@@ -106,14 +106,14 @@ pub async fn run(
                         &format!("/plans/{plan_id}/transactions"),
                         Some(&body),
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client
                 .update_transactions_bulk(&plan_id, &transactions)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::Delete { transaction_id } => {
@@ -124,12 +124,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/transactions/{transaction_id}"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let txn = client.delete_transaction(&plan_id, transaction_id).await?;
-            output::output(&txn, format)?;
+            output::output(&txn, out)?;
         }
 
         TransactionsCommand::Import => {
@@ -140,12 +140,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/transactions/import"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client.import_transactions(&plan_id).await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::ByAccount {
@@ -160,7 +160,7 @@ pub async fn run(
                         &format!("/plans/{plan_id}/accounts/{account_id}/transactions"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
@@ -172,7 +172,7 @@ pub async fn run(
                     *last_knowledge,
                 )
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::ByCategory {
@@ -187,7 +187,7 @@ pub async fn run(
                         &format!("/plans/{plan_id}/categories/{category_id}/transactions"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
@@ -199,7 +199,7 @@ pub async fn run(
                     *last_knowledge,
                 )
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::ByPayee {
@@ -214,7 +214,7 @@ pub async fn run(
                         &format!("/plans/{plan_id}/payees/{payee_id}/transactions"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
@@ -226,7 +226,7 @@ pub async fn run(
                     *last_knowledge,
                 )
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         TransactionsCommand::ByMonth {
@@ -240,14 +240,79 @@ pub async fn run(
                         &format!("/plans/{plan_id}/months/{month}/transactions"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client
                 .get_transactions_by_month(&plan_id, month, *last_knowledge)
                 .await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
+        }
+
+        TransactionsCommand::Search {
+            memo,
+            payee_name,
+            since_date,
+            max_amount,
+            min_amount,
+        } => {
+            if dry_run {
+                output::output(
+                    &client.dry_run_request("GET", &format!("/plans/{plan_id}/transactions"), None),
+                    out,
+                )?;
+                return Ok(());
+            }
+            // Fetch all transactions (with optional since_date filter)
+            let data = client
+                .get_transactions(&plan_id, since_date.as_deref(), None, None)
+                .await?;
+
+            // Client-side filtering
+            let filtered: Vec<_> = data
+                .transactions
+                .into_iter()
+                .filter(|txn| {
+                    if let Some(memo_search) = memo {
+                        let memo_lower = memo_search.to_lowercase();
+                        if !txn
+                            .memo
+                            .as_ref()
+                            .is_some_and(|m| m.to_lowercase().contains(&memo_lower))
+                        {
+                            return false;
+                        }
+                    }
+                    if let Some(payee_search) = payee_name {
+                        let payee_lower = payee_search.to_lowercase();
+                        if !txn
+                            .payee_name
+                            .as_ref()
+                            .is_some_and(|p| p.to_lowercase().contains(&payee_lower))
+                        {
+                            return false;
+                        }
+                    }
+                    if let Some(max) = max_amount
+                        && txn.amount > *max
+                    {
+                        return false;
+                    }
+                    if let Some(min) = min_amount
+                        && txn.amount < *min
+                    {
+                        return false;
+                    }
+                    true
+                })
+                .collect();
+
+            let result = serde_json::json!({
+                "transactions": filtered,
+                "count": filtered.len(),
+            });
+            output::output(&result, out)?;
         }
     }
     Ok(())

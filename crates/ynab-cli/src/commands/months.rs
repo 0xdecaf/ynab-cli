@@ -1,14 +1,14 @@
 use anyhow::Result;
 use ynab_client::YnabClient;
 
-use crate::cli::{MonthsCommand, OutputFormat};
+use crate::cli::MonthsCommand;
 use crate::commands::plans::resolve_plan_id;
-use crate::output;
+use crate::output::{self, OutputConfig};
 
 pub async fn run(
     client: &YnabClient,
     command: &MonthsCommand,
-    format: &OutputFormat,
+    out: &OutputConfig<'_>,
     plan_id: Option<&str>,
     dry_run: bool,
 ) -> Result<()> {
@@ -19,12 +19,12 @@ pub async fn run(
             if dry_run {
                 output::output(
                     &client.dry_run_request("GET", &format!("/plans/{plan_id}/months"), None),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client.get_months(&plan_id, *last_knowledge).await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         MonthsCommand::Get { month } => {
@@ -35,12 +35,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/months/{month}"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let detail = client.get_month(&plan_id, month).await?;
-            output::output(&detail, format)?;
+            output::output(&detail, out)?;
         }
     }
     Ok(())

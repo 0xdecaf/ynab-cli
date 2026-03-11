@@ -20,7 +20,9 @@ Getting started:
 Most tools require a plan_id parameter. Get one from ynab_plans_list first.
 
 Delta sync: Many list tools accept last_knowledge_of_server for incremental updates.
-Pass the server_knowledge value from a previous response to get only changes since then.";
+Pass the server_knowledge value from a previous response to get only changes since then.
+
+Raw API: Use ynab_api_raw for any endpoint not covered by specific tools.";
 
 /// MCP server for the YNAB API.
 #[derive(Clone)]
@@ -225,7 +227,7 @@ impl YnabMcpServer {
     }
 
     #[tool(
-        description = "Create a transaction. Provide JSON with: account_id (required), date (required, YYYY-MM-DD), amount (required, milliunits, negative=outflow), payee_id, payee_name (max 100 chars), category_id, memo (max 200 chars), cleared (cleared|uncleared|reconciled), approved, flag_color (red|orange|yellow|green|blue|purple), import_id, subtransactions"
+        description = "Create a transaction. Provide JSON with: account_id (required), date (required, YYYY-MM-DD), amount (required, milliunits, negative=outflow), payee_id, payee_name, category_id, memo, cleared, approved, flag_color, import_id, subtransactions"
     )]
     async fn ynab_transactions_create(
         &self,
@@ -245,9 +247,7 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(
-        description = "Update a transaction. Provide JSON with fields to change (same fields as create, all optional)."
-    )]
+    #[tool(description = "Update a transaction. Provide JSON with fields to change.")]
     async fn ynab_transactions_update(
         &self,
         #[tool(param)]
@@ -270,7 +270,7 @@ impl YnabMcpServer {
     }
 
     #[tool(
-        description = "Update multiple transactions at once. Provide a JSON array of transaction objects (each must include id)."
+        description = "Update multiple transactions at once. Provide a JSON array (each must include id)."
     )]
     async fn ynab_transactions_update_bulk(
         &self,
@@ -307,9 +307,7 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(
-        description = "Import transactions from linked accounts. Uses bank-style deduplication via import_id."
-    )]
+    #[tool(description = "Import transactions from linked accounts.")]
     async fn ynab_transactions_import(
         &self,
         #[tool(param)]
@@ -323,9 +321,7 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(
-        description = "List transactions for a specific account. Supports date filtering and delta sync."
-    )]
+    #[tool(description = "List transactions for a specific account.")]
     async fn ynab_transactions_by_account(
         &self,
         #[tool(param)]
@@ -335,7 +331,7 @@ impl YnabMcpServer {
         #[schemars(description = "Account UUID")]
         account_id: String,
         #[tool(param)]
-        #[schemars(description = "Only return transactions on or after this date (YYYY-MM-DD)")]
+        #[schemars(description = "Only transactions on or after this date (YYYY-MM-DD)")]
         since_date: Option<String>,
         #[tool(param)]
         #[schemars(description = "Server knowledge for delta sync")]
@@ -353,9 +349,7 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(
-        description = "List transactions for a specific category. Supports date filtering and delta sync."
-    )]
+    #[tool(description = "List transactions for a specific category.")]
     async fn ynab_transactions_by_category(
         &self,
         #[tool(param)]
@@ -365,7 +359,7 @@ impl YnabMcpServer {
         #[schemars(description = "Category UUID")]
         category_id: String,
         #[tool(param)]
-        #[schemars(description = "Only return transactions on or after this date (YYYY-MM-DD)")]
+        #[schemars(description = "Only transactions on or after this date (YYYY-MM-DD)")]
         since_date: Option<String>,
         #[tool(param)]
         #[schemars(description = "Server knowledge for delta sync")]
@@ -383,9 +377,7 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(
-        description = "List transactions for a specific payee. Supports date filtering and delta sync."
-    )]
+    #[tool(description = "List transactions for a specific payee.")]
     async fn ynab_transactions_by_payee(
         &self,
         #[tool(param)]
@@ -395,7 +387,7 @@ impl YnabMcpServer {
         #[schemars(description = "Payee UUID")]
         payee_id: String,
         #[tool(param)]
-        #[schemars(description = "Only return transactions on or after this date (YYYY-MM-DD)")]
+        #[schemars(description = "Only transactions on or after this date (YYYY-MM-DD)")]
         since_date: Option<String>,
         #[tool(param)]
         #[schemars(description = "Server knowledge for delta sync")]
@@ -413,7 +405,7 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "List transactions for a specific month. Supports delta sync.")]
+    #[tool(description = "List transactions for a specific month.")]
     async fn ynab_transactions_by_month(
         &self,
         #[tool(param)]
@@ -431,6 +423,81 @@ impl YnabMcpServer {
             .await
             .map(|d| to_json(&d))
             .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        description = "Search transactions by memo or payee name with optional amount filters. Fetches all transactions then filters client-side."
+    )]
+    async fn ynab_transactions_search(
+        &self,
+        #[tool(param)]
+        #[schemars(description = "Plan (budget) UUID")]
+        plan_id: String,
+        #[tool(param)]
+        #[schemars(description = "Search in memo field (case-insensitive substring)")]
+        memo: Option<String>,
+        #[tool(param)]
+        #[schemars(description = "Search in payee name (case-insensitive substring)")]
+        payee_name: Option<String>,
+        #[tool(param)]
+        #[schemars(description = "Only search transactions on or after this date (YYYY-MM-DD)")]
+        since_date: Option<String>,
+        #[tool(param)]
+        #[schemars(description = "Maximum amount in milliunits")]
+        max_amount: Option<i64>,
+        #[tool(param)]
+        #[schemars(description = "Minimum amount in milliunits")]
+        min_amount: Option<i64>,
+    ) -> Result<String, String> {
+        let data = self
+            .client
+            .get_transactions(&plan_id, since_date.as_deref(), None, None)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let filtered: Vec<_> = data
+            .transactions
+            .into_iter()
+            .filter(|txn| {
+                if let Some(ref memo_search) = memo {
+                    let memo_lower = memo_search.to_lowercase();
+                    if !txn
+                        .memo
+                        .as_ref()
+                        .is_some_and(|m| m.to_lowercase().contains(&memo_lower))
+                    {
+                        return false;
+                    }
+                }
+                if let Some(ref payee_search) = payee_name {
+                    let payee_lower = payee_search.to_lowercase();
+                    if !txn
+                        .payee_name
+                        .as_ref()
+                        .is_some_and(|p| p.to_lowercase().contains(&payee_lower))
+                    {
+                        return false;
+                    }
+                }
+                if let Some(max) = max_amount
+                    && txn.amount > max
+                {
+                    return false;
+                }
+                if let Some(min) = min_amount
+                    && txn.amount < min
+                {
+                    return false;
+                }
+                true
+            })
+            .collect();
+
+        let result = serde_json::json!({
+            "transactions": filtered,
+            "count": filtered.len(),
+        });
+        Ok(to_json(&result))
     }
 
     // === Categories ===
@@ -469,6 +536,57 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
+    #[tool(
+        description = "Update a category (name, note, goal settings). Provide JSON with fields to change."
+    )]
+    async fn ynab_categories_update(
+        &self,
+        #[tool(param)]
+        #[schemars(description = "Plan (budget) UUID")]
+        plan_id: String,
+        #[tool(param)]
+        #[schemars(description = "Category UUID to update")]
+        category_id: String,
+        #[tool(param)]
+        #[schemars(
+            description = "Updated fields as JSON (e.g., {\"name\": \"New Name\", \"note\": \"Updated\"})"
+        )]
+        category_json: String,
+    ) -> Result<String, String> {
+        let category: serde_json::Value =
+            serde_json::from_str(&category_json).map_err(|e| format!("Invalid JSON: {e}"))?;
+        self.client
+            .update_category(&plan_id, &category_id, &category)
+            .await
+            .map(|d| to_json(&d))
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        description = "Set the budgeted amount for a category in a specific month. This is how you assign money to categories."
+    )]
+    async fn ynab_categories_budget(
+        &self,
+        #[tool(param)]
+        #[schemars(description = "Plan (budget) UUID")]
+        plan_id: String,
+        #[tool(param)]
+        #[schemars(description = "Month in YYYY-MM-DD format (e.g., 2026-03-01)")]
+        month: String,
+        #[tool(param)]
+        #[schemars(description = "Category UUID")]
+        category_id: String,
+        #[tool(param)]
+        #[schemars(description = "Budgeted amount in milliunits (1000 = $1.00)")]
+        budgeted: i64,
+    ) -> Result<String, String> {
+        self.client
+            .update_category_month(&plan_id, &month, &category_id, budgeted)
+            .await
+            .map(|d| to_json(&d))
+            .map_err(|e| e.to_string())
+    }
+
     // === Payees ===
 
     #[tool(description = "List all payees in a plan. Supports delta sync.")]
@@ -500,6 +618,28 @@ impl YnabMcpServer {
     ) -> Result<String, String> {
         self.client
             .get_payee(&plan_id, &payee_id)
+            .await
+            .map(|d| to_json(&d))
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(description = "Update a payee (e.g., rename). Provide JSON with fields to change.")]
+    async fn ynab_payees_update(
+        &self,
+        #[tool(param)]
+        #[schemars(description = "Plan (budget) UUID")]
+        plan_id: String,
+        #[tool(param)]
+        #[schemars(description = "Payee UUID to update")]
+        payee_id: String,
+        #[tool(param)]
+        #[schemars(description = "Updated fields as JSON (e.g., {\"name\": \"New Name\"})")]
+        payee_json: String,
+    ) -> Result<String, String> {
+        let payee: serde_json::Value =
+            serde_json::from_str(&payee_json).map_err(|e| format!("Invalid JSON: {e}"))?;
+        self.client
+            .update_payee(&plan_id, &payee_id, &payee)
             .await
             .map(|d| to_json(&d))
             .map_err(|e| e.to_string())
@@ -557,9 +697,7 @@ impl YnabMcpServer {
 
     // === Months ===
 
-    #[tool(
-        description = "List all budget months. Returns monthly summaries with income, budgeted, activity, and to_be_budgeted amounts. Supports delta sync."
-    )]
+    #[tool(description = "List all budget months with summaries. Supports delta sync.")]
     async fn ynab_months_list(
         &self,
         #[tool(param)]
@@ -629,6 +767,23 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
+    #[tool(description = "Delete a scheduled transaction by ID")]
+    async fn ynab_scheduled_delete(
+        &self,
+        #[tool(param)]
+        #[schemars(description = "Plan (budget) UUID")]
+        plan_id: String,
+        #[tool(param)]
+        #[schemars(description = "Scheduled transaction UUID to delete")]
+        scheduled_transaction_id: String,
+    ) -> Result<String, String> {
+        self.client
+            .delete_scheduled_transaction(&plan_id, &scheduled_transaction_id)
+            .await
+            .map(|d| to_json(&d))
+            .map_err(|e| e.to_string())
+    }
+
     // === Money Movements ===
 
     #[tool(description = "List all money movements in a plan. Supports delta sync.")]
@@ -660,6 +815,37 @@ impl YnabMcpServer {
     ) -> Result<String, String> {
         self.client
             .get_money_movement_groups(&plan_id, last_knowledge_of_server)
+            .await
+            .map(|d| to_json(&d))
+            .map_err(|e| e.to_string())
+    }
+
+    // === Raw API ===
+
+    #[tool(
+        description = "Make a raw API request to any YNAB endpoint. Use for endpoints not covered by other tools."
+    )]
+    async fn ynab_api_raw(
+        &self,
+        #[tool(param)]
+        #[schemars(description = "HTTP method: GET, POST, PUT, PATCH, DELETE")]
+        method: String,
+        #[tool(param)]
+        #[schemars(description = "API path starting with /v1/ (e.g., /v1/plans)")]
+        path: String,
+        #[tool(param)]
+        #[schemars(description = "Optional request body as JSON string")]
+        body: Option<String>,
+    ) -> Result<String, String> {
+        let body_value = match body {
+            Some(ref b) => Some(
+                serde_json::from_str::<serde_json::Value>(b)
+                    .map_err(|e| format!("Invalid JSON body: {e}"))?,
+            ),
+            None => None,
+        };
+        self.client
+            .raw_request(&method, &path, body_value.as_ref())
             .await
             .map(|d| to_json(&d))
             .map_err(|e| e.to_string())

@@ -1,31 +1,124 @@
+use std::io::Write;
+
 use crate::cli::OutputFormat;
 
-/// Output a serializable value in the requested format.
-///
-/// For table/CSV, flattens the JSON into rows. Objects become single-row tables,
-/// arrays become multi-row tables. Nested objects are JSON-stringified.
-pub fn output(value: &impl serde::Serialize, format: &OutputFormat) -> anyhow::Result<()> {
-    let json = serde_json::to_value(value)?;
+/// Fields that contain milliunit monetary values and should be converted with --dollars.
+const MILLIUNIT_FIELDS: &[&str] = &[
+    "amount",
+    "balance",
+    "budgeted",
+    "activity",
+    "income",
+    "to_be_budgeted",
+    "cleared_balance",
+    "uncleared_balance",
+    "goal_target",
+    "goal_under_funded",
+    "goal_overall_funded",
+    "goal_overall_left",
+];
 
-    match format {
-        OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&json)?);
-        }
-        OutputFormat::Table => {
-            print_table(&json)?;
-        }
-        OutputFormat::Csv => {
-            print_csv(&json)?;
+/// Bundles all output options for consistent rendering across commands.
+pub struct OutputConfig<'a> {
+    pub format: &'a OutputFormat,
+    pub dollars: bool,
+    pub fields: Option<&'a str>,
+    pub output_path: Option<&'a str>,
+}
+
+/// Output a serializable value with all post-processing options applied.
+pub fn output(value: &impl serde::Serialize, cfg: &OutputConfig) -> anyhow::Result<()> {
+    let mut json = serde_json::to_value(value)?;
+
+    // Apply dollar conversion
+    if cfg.dollars {
+        convert_dollars(&mut json);
+    }
+
+    // Apply field filtering
+    if let Some(field_list) = cfg.fields {
+        let field_names: Vec<&str> = field_list.split(',').map(|s| s.trim()).collect();
+        filter_fields(&mut json, &field_names);
+    }
+
+    // Determine output destination
+    if let Some(path) = cfg.output_path {
+        let content = match cfg.format {
+            OutputFormat::Json => serde_json::to_string_pretty(&json)?,
+            OutputFormat::Table => format_table(&json)?,
+            OutputFormat::Csv => format_csv(&json)?,
+        };
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(content.as_bytes())?;
+        file.write_all(b"\n")?;
+        eprintln!("Output written to: {path}");
+    } else {
+        match cfg.format {
+            OutputFormat::Json => {
+                println!("{}", serde_json::to_string_pretty(&json)?);
+            }
+            OutputFormat::Table => {
+                print!("{}", format_table(&json)?);
+            }
+            OutputFormat::Csv => {
+                print!("{}", format_csv(&json)?);
+            }
         }
     }
     Ok(())
 }
 
-fn print_table(json: &serde_json::Value) -> anyhow::Result<()> {
+/// Convert milliunit fields to dollar amounts in-place.
+fn convert_dollars(json: &mut serde_json::Value) {
+    match json {
+        serde_json::Value::Object(map) => {
+            for (key, value) in map.iter_mut() {
+                if MILLIUNIT_FIELDS.contains(&key.as_str()) {
+                    if let Some(n) = value.as_i64() {
+                        let dollars = n as f64 / 1000.0;
+                        *value = serde_json::json!(dollars);
+                    }
+                } else {
+                    convert_dollars(value);
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                convert_dollars(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Filter JSON to only include specified fields.
+fn filter_fields(json: &mut serde_json::Value, fields: &[&str]) {
+    match json {
+        serde_json::Value::Object(map) => {
+            // Check if this object has array values (response wrapper like {transactions: [...]})
+            let has_array_child = map.values().any(|v| v.is_array());
+            if has_array_child {
+                for value in map.values_mut() {
+                    filter_fields(value, fields);
+                }
+            } else {
+                map.retain(|k, _| fields.contains(&k.as_str()));
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                filter_fields(item, fields);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn format_table(json: &serde_json::Value) -> anyhow::Result<String> {
     let rows = extract_rows(json);
     if rows.is_empty() {
-        println!("(no data)");
-        return Ok(());
+        return Ok("(no data)\n".to_string());
     }
 
     let headers = collect_headers(&rows);
@@ -41,18 +134,17 @@ fn print_table(json: &serde_json::Value) -> anyhow::Result<()> {
         table.add_row(cells);
     }
 
-    println!("{table}");
-    Ok(())
+    Ok(format!("{table}\n"))
 }
 
-fn print_csv(json: &serde_json::Value) -> anyhow::Result<()> {
+fn format_csv(json: &serde_json::Value) -> anyhow::Result<String> {
     let rows = extract_rows(json);
     if rows.is_empty() {
-        return Ok(());
+        return Ok(String::new());
     }
 
     let headers = collect_headers(&rows);
-    let mut wtr = csv::Writer::from_writer(std::io::stdout());
+    let mut wtr = csv::Writer::from_writer(Vec::new());
     wtr.write_record(&headers)?;
 
     for row in &rows {
@@ -63,7 +155,7 @@ fn print_csv(json: &serde_json::Value) -> anyhow::Result<()> {
         wtr.write_record(&record)?;
     }
     wtr.flush()?;
-    Ok(())
+    Ok(String::from_utf8(wtr.into_inner()?)?)
 }
 
 /// Extract a flat list of JSON objects from the value.

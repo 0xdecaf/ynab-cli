@@ -2,14 +2,14 @@ use anyhow::Result;
 use ynab_client::YnabClient;
 use ynab_types::SaveAccount;
 
-use crate::cli::{AccountsCommand, OutputFormat};
+use crate::cli::AccountsCommand;
 use crate::commands::plans::resolve_plan_id;
-use crate::output;
+use crate::output::{self, OutputConfig};
 
 pub async fn run(
     client: &YnabClient,
     command: &AccountsCommand,
-    format: &OutputFormat,
+    out: &OutputConfig<'_>,
     plan_id: Option<&str>,
     dry_run: bool,
 ) -> Result<()> {
@@ -20,12 +20,12 @@ pub async fn run(
             if dry_run {
                 output::output(
                     &client.dry_run_request("GET", &format!("/plans/{plan_id}/accounts"), None),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let data = client.get_accounts(&plan_id, *last_knowledge).await?;
-            output::output(&data, format)?;
+            output::output(&data, out)?;
         }
 
         AccountsCommand::Get { account_id } => {
@@ -36,12 +36,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/accounts/{account_id}"),
                         None,
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let account = client.get_account(&plan_id, account_id).await?;
-            output::output(&account, format)?;
+            output::output(&account, out)?;
         }
 
         AccountsCommand::Create { json } => {
@@ -54,12 +54,12 @@ pub async fn run(
                         &format!("/plans/{plan_id}/accounts"),
                         Some(&body),
                     ),
-                    format,
+                    out,
                 )?;
                 return Ok(());
             }
             let created = client.create_account(&plan_id, &account).await?;
-            output::output(&created, format)?;
+            output::output(&created, out)?;
         }
     }
     Ok(())
