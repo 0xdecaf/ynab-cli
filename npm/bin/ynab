@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+
+console.error(
+  "ynab binary not found. The postinstall script may not have run.\n" +
+    "Try: npm rebuild ynab-cli-rs\n" +
+    "Or install manually: https://github.com/0xdecaf/ynab-cli/releases"
+);
+process.exit(1);

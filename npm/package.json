@@ -1,0 +1,34 @@
+{
+  "name": "ynab-cli-rs",
+  "version": "0.1.0",
+  "description": "YNAB CLI — command-line interface and MCP server for the YNAB API (Rust)",
+  "bin": {
+    "ynab": "bin/ynab"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xdecaf/ynab-cli"
+  },
+  "keywords": [
+    "ynab",
+    "budget",
+    "cli",
+    "mcp",
+    "finance"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}
