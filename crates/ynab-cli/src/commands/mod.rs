@@ -1,0 +1,12 @@
+pub mod auth;
+pub mod plans;
+pub mod accounts;
+pub mod transactions;
+pub mod categories;
+pub mod payees;
+pub mod payee_locations;
+pub mod months;
+pub mod scheduled;
+pub mod money_movements;
+pub mod user;
+pub mod schema;

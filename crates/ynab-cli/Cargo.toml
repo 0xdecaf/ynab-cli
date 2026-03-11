@@ -1,0 +1,25 @@
+[package]
+name = "ynab-cli"
+description = "CLI and MCP server for the YNAB (You Need a Budget) API"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ynab"
+path = "src/main.rs"
+
+[dependencies]
+ynab-types = { path = "../ynab-types" }
+ynab-client = { path = "../ynab-client" }
+serde.workspace = true
+serde_json.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+tokio.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+comfy-table = "7"
+csv = "1"
+rmcp = { version = "0.1", features = ["server", "transport-io"] }
+schemars = "0.8"
+clap_complete = "4"
