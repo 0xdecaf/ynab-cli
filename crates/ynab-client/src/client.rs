@@ -1,4 +1,4 @@
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::de::DeserializeOwned;
 use ynab_types::*;
 
@@ -148,9 +148,7 @@ impl YnabClient {
             if let Ok(error_response) = serde_json::from_str::<ErrorResponse>(&body) {
                 return Err(YnabError::from_api_error(status, error_response.error));
             }
-            return Err(YnabError::Other(format!(
-                "HTTP {status}: {body}"
-            )));
+            return Err(YnabError::Other(format!("HTTP {status}: {body}")));
         }
 
         let body = response.text().await?;
@@ -172,8 +170,7 @@ impl YnabClient {
     }
 
     pub async fn get_plan(&self, plan_id: &str) -> Result<PlanDetailData, YnabError> {
-        let resp: ApiResponse<PlanDetailData> =
-            self.get(&format!("/plans/{plan_id}")).await?;
+        let resp: ApiResponse<PlanDetailData> = self.get(&format!("/plans/{plan_id}")).await?;
         Ok(resp.data)
     }
 
@@ -198,14 +195,10 @@ impl YnabClient {
         Ok(resp.data)
     }
 
-    pub async fn get_account(
-        &self,
-        plan_id: &str,
-        account_id: &str,
-    ) -> Result<Account, YnabError> {
-        let resp: ApiResponse<AccountData> =
-            self.get(&format!("/plans/{plan_id}/accounts/{account_id}"))
-                .await?;
+    pub async fn get_account(&self, plan_id: &str, account_id: &str) -> Result<Account, YnabError> {
+        let resp: ApiResponse<AccountData> = self
+            .get(&format!("/plans/{plan_id}/accounts/{account_id}"))
+            .await?;
         Ok(resp.data.account)
     }
 
@@ -215,9 +208,9 @@ impl YnabClient {
         account: &SaveAccount,
     ) -> Result<Account, YnabError> {
         let body = serde_json::json!({ "account": account });
-        let resp: ApiResponse<AccountData> =
-            self.post(&format!("/plans/{plan_id}/accounts"), &body)
-                .await?;
+        let resp: ApiResponse<AccountData> = self
+            .post(&format!("/plans/{plan_id}/accounts"), &body)
+            .await?;
         Ok(resp.data.account)
     }
 
@@ -245,9 +238,9 @@ impl YnabClient {
         } else {
             format!("?{}", params.join("&"))
         };
-        let resp: ApiResponse<TransactionsData> =
-            self.get(&format!("/plans/{plan_id}/transactions{query}"))
-                .await?;
+        let resp: ApiResponse<TransactionsData> = self
+            .get(&format!("/plans/{plan_id}/transactions{query}"))
+            .await?;
         Ok(resp.data)
     }
 
@@ -257,9 +250,7 @@ impl YnabClient {
         transaction_id: &str,
     ) -> Result<TransactionDetail, YnabError> {
         let resp: ApiResponse<TransactionData> = self
-            .get(&format!(
-                "/plans/{plan_id}/transactions/{transaction_id}"
-            ))
+            .get(&format!("/plans/{plan_id}/transactions/{transaction_id}"))
             .await?;
         Ok(resp.data.transaction)
     }
@@ -270,9 +261,9 @@ impl YnabClient {
         transaction: &SaveTransaction,
     ) -> Result<SaveTransactionsData, YnabError> {
         let body = serde_json::json!({ "transaction": transaction });
-        let resp: ApiResponse<SaveTransactionsData> =
-            self.post(&format!("/plans/{plan_id}/transactions"), &body)
-                .await?;
+        let resp: ApiResponse<SaveTransactionsData> = self
+            .post(&format!("/plans/{plan_id}/transactions"), &body)
+            .await?;
         Ok(resp.data)
     }
 
@@ -298,9 +289,7 @@ impl YnabClient {
         transaction_id: &str,
     ) -> Result<TransactionDetail, YnabError> {
         let resp: ApiResponse<TransactionData> = self
-            .delete_request(&format!(
-                "/plans/{plan_id}/transactions/{transaction_id}"
-            ))
+            .delete_request(&format!("/plans/{plan_id}/transactions/{transaction_id}"))
             .await?;
         Ok(resp.data.transaction)
     }
@@ -404,10 +393,7 @@ impl YnabClient {
         Ok(resp.data)
     }
 
-    pub async fn import_transactions(
-        &self,
-        plan_id: &str,
-    ) -> Result<ImportData, YnabError> {
+    pub async fn import_transactions(&self, plan_id: &str) -> Result<ImportData, YnabError> {
         let resp: ApiResponse<ImportData> = self
             .post(
                 &format!("/plans/{plan_id}/transactions/import"),
@@ -423,9 +409,9 @@ impl YnabClient {
         transactions: &[serde_json::Value],
     ) -> Result<SaveTransactionsData, YnabError> {
         let body = serde_json::json!({ "transactions": transactions });
-        let resp: ApiResponse<SaveTransactionsData> =
-            self.patch(&format!("/plans/{plan_id}/transactions"), &body)
-                .await?;
+        let resp: ApiResponse<SaveTransactionsData> = self
+            .patch(&format!("/plans/{plan_id}/transactions"), &body)
+            .await?;
         Ok(resp.data)
     }
 
@@ -440,9 +426,9 @@ impl YnabClient {
             Some(k) => format!("?last_knowledge_of_server={k}"),
             None => String::new(),
         };
-        let resp: ApiResponse<CategoriesData> =
-            self.get(&format!("/plans/{plan_id}/categories{query}"))
-                .await?;
+        let resp: ApiResponse<CategoriesData> = self
+            .get(&format!("/plans/{plan_id}/categories{query}"))
+            .await?;
         Ok(resp.data)
     }
 
@@ -452,9 +438,7 @@ impl YnabClient {
         category_id: &str,
     ) -> Result<Category, YnabError> {
         let resp: ApiResponse<CategoryData> = self
-            .get(&format!(
-                "/plans/{plan_id}/categories/{category_id}"
-            ))
+            .get(&format!("/plans/{plan_id}/categories/{category_id}"))
             .await?;
         Ok(resp.data.category)
     }
@@ -475,14 +459,10 @@ impl YnabClient {
         Ok(resp.data)
     }
 
-    pub async fn get_payee(
-        &self,
-        plan_id: &str,
-        payee_id: &str,
-    ) -> Result<Payee, YnabError> {
-        let resp: ApiResponse<PayeeData> =
-            self.get(&format!("/plans/{plan_id}/payees/{payee_id}"))
-                .await?;
+    pub async fn get_payee(&self, plan_id: &str, payee_id: &str) -> Result<Payee, YnabError> {
+        let resp: ApiResponse<PayeeData> = self
+            .get(&format!("/plans/{plan_id}/payees/{payee_id}"))
+            .await?;
         Ok(resp.data.payee)
     }
 
@@ -502,14 +482,10 @@ impl YnabClient {
         Ok(resp.data)
     }
 
-    pub async fn get_month(
-        &self,
-        plan_id: &str,
-        month: &str,
-    ) -> Result<MonthDetail, YnabError> {
-        let resp: ApiResponse<MonthDetailData> =
-            self.get(&format!("/plans/{plan_id}/months/{month}"))
-                .await?;
+    pub async fn get_month(&self, plan_id: &str, month: &str) -> Result<MonthDetail, YnabError> {
+        let resp: ApiResponse<MonthDetailData> = self
+            .get(&format!("/plans/{plan_id}/months/{month}"))
+            .await?;
         Ok(resp.data.month)
     }
 
@@ -525,9 +501,7 @@ impl YnabClient {
             None => String::new(),
         };
         let resp: ApiResponse<ScheduledTransactionsData> = self
-            .get(&format!(
-                "/plans/{plan_id}/scheduled_transactions{query}"
-            ))
+            .get(&format!("/plans/{plan_id}/scheduled_transactions{query}"))
             .await?;
         Ok(resp.data)
     }
@@ -551,9 +525,9 @@ impl YnabClient {
         &self,
         plan_id: &str,
     ) -> Result<Vec<PayeeLocation>, YnabError> {
-        let resp: ApiResponse<PayeeLocationsData> =
-            self.get(&format!("/plans/{plan_id}/payee_locations"))
-                .await?;
+        let resp: ApiResponse<PayeeLocationsData> = self
+            .get(&format!("/plans/{plan_id}/payee_locations"))
+            .await?;
         Ok(resp.data.payee_locations)
     }
 
@@ -610,9 +584,7 @@ impl YnabClient {
             None => String::new(),
         };
         let resp: ApiResponse<MoneyMovementGroupsData> = self
-            .get(&format!(
-                "/plans/{plan_id}/money_movement_groups{query}"
-            ))
+            .get(&format!("/plans/{plan_id}/money_movement_groups{query}"))
             .await?;
         Ok(resp.data)
     }

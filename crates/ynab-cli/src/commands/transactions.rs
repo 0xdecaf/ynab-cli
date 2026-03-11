@@ -23,11 +23,7 @@ pub async fn run(
         } => {
             if dry_run {
                 output::output(
-                    &client.dry_run_request(
-                        "GET",
-                        &format!("/plans/{plan_id}/transactions"),
-                        None,
-                    ),
+                    &client.dry_run_request("GET", &format!("/plans/{plan_id}/transactions"), None),
                     format,
                 )?;
                 return Ok(());

@@ -7,8 +7,10 @@ pub fn run(command: &AuthCommand) -> Result<()> {
     match command {
         AuthCommand::Login { pat, token } => {
             if !pat {
-                anyhow::bail!("Currently only --pat (personal access token) login is supported.\n\
-                    Usage: ynab auth login --pat [--token <TOKEN>]");
+                anyhow::bail!(
+                    "Currently only --pat (personal access token) login is supported.\n\
+                    Usage: ynab auth login --pat [--token <TOKEN>]"
+                );
             }
 
             let token_value = match token {

@@ -1,5 +1,5 @@
 use rmcp::model::{ServerCapabilities, ServerInfo};
-use rmcp::{tool, ServerHandler};
+use rmcp::{ServerHandler, tool};
 use ynab_client::YnabClient;
 
 fn to_json(value: &impl serde::Serialize) -> String {
@@ -205,7 +205,9 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "Get a single transaction by ID with full details including subtransactions")]
+    #[tool(
+        description = "Get a single transaction by ID with full details including subtransactions"
+    )]
     async fn ynab_transactions_get(
         &self,
         #[tool(param)]
@@ -243,7 +245,9 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "Update a transaction. Provide JSON with fields to change (same fields as create, all optional).")]
+    #[tool(
+        description = "Update a transaction. Provide JSON with fields to change (same fields as create, all optional)."
+    )]
     async fn ynab_transactions_update(
         &self,
         #[tool(param)]
@@ -265,7 +269,9 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "Update multiple transactions at once. Provide a JSON array of transaction objects (each must include id).")]
+    #[tool(
+        description = "Update multiple transactions at once. Provide a JSON array of transaction objects (each must include id)."
+    )]
     async fn ynab_transactions_update_bulk(
         &self,
         #[tool(param)]
@@ -317,7 +323,9 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "List transactions for a specific account. Supports date filtering and delta sync.")]
+    #[tool(
+        description = "List transactions for a specific account. Supports date filtering and delta sync."
+    )]
     async fn ynab_transactions_by_account(
         &self,
         #[tool(param)]
@@ -345,7 +353,9 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "List transactions for a specific category. Supports date filtering and delta sync.")]
+    #[tool(
+        description = "List transactions for a specific category. Supports date filtering and delta sync."
+    )]
     async fn ynab_transactions_by_category(
         &self,
         #[tool(param)]
@@ -373,7 +383,9 @@ impl YnabMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(description = "List transactions for a specific payee. Supports date filtering and delta sync.")]
+    #[tool(
+        description = "List transactions for a specific payee. Supports date filtering and delta sync."
+    )]
     async fn ynab_transactions_by_payee(
         &self,
         #[tool(param)]
@@ -423,9 +435,7 @@ impl YnabMcpServer {
 
     // === Categories ===
 
-    #[tool(
-        description = "List all categories grouped by category group. Supports delta sync."
-    )]
+    #[tool(description = "List all categories grouped by category group. Supports delta sync.")]
     async fn ynab_categories_list(
         &self,
         #[tool(param)]
@@ -547,7 +557,9 @@ impl YnabMcpServer {
 
     // === Months ===
 
-    #[tool(description = "List all budget months. Returns monthly summaries with income, budgeted, activity, and to_be_budgeted amounts. Supports delta sync.")]
+    #[tool(
+        description = "List all budget months. Returns monthly summaries with income, budgeted, activity, and to_be_budgeted amounts. Supports delta sync."
+    )]
     async fn ynab_months_list(
         &self,
         #[tool(param)]

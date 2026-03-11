@@ -26,12 +26,7 @@ async fn main() -> Result<()> {
 
         // Shell completions
         Command::Completions { shell } => {
-            clap_complete::generate(
-                *shell,
-                &mut Cli::command(),
-                "ynab",
-                &mut std::io::stdout(),
-            );
+            clap_complete::generate(*shell, &mut Cli::command(), "ynab", &mut std::io::stdout());
         }
 
         // MCP server - resolves its own auth
@@ -61,12 +56,10 @@ async fn main() -> Result<()> {
                     commands::accounts::run(&client, command, format, plan_id, dry_run).await?;
                 }
                 Command::Transactions { command } => {
-                    commands::transactions::run(&client, command, format, plan_id, dry_run)
-                        .await?;
+                    commands::transactions::run(&client, command, format, plan_id, dry_run).await?;
                 }
                 Command::Categories { command } => {
-                    commands::categories::run(&client, command, format, plan_id, dry_run)
-                        .await?;
+                    commands::categories::run(&client, command, format, plan_id, dry_run).await?;
                 }
                 Command::Payees { command } => {
                     commands::payees::run(&client, command, format, plan_id, dry_run).await?;
@@ -79,8 +72,7 @@ async fn main() -> Result<()> {
                     commands::months::run(&client, command, format, plan_id, dry_run).await?;
                 }
                 Command::Scheduled { command } => {
-                    commands::scheduled::run(&client, command, format, plan_id, dry_run)
-                        .await?;
+                    commands::scheduled::run(&client, command, format, plan_id, dry_run).await?;
                 }
                 Command::MoneyMovements { command } => {
                     commands::money_movements::run(&client, command, format, plan_id, dry_run)

@@ -70,10 +70,7 @@ fn print_csv(json: &serde_json::Value) -> anyhow::Result<()> {
 /// Handles: single object, array of objects, or objects with a nested array field.
 fn extract_rows(json: &serde_json::Value) -> Vec<&serde_json::Map<String, serde_json::Value>> {
     match json {
-        serde_json::Value::Array(arr) => arr
-            .iter()
-            .filter_map(|v| v.as_object())
-            .collect(),
+        serde_json::Value::Array(arr) => arr.iter().filter_map(|v| v.as_object()).collect(),
         serde_json::Value::Object(obj) => {
             // If the object has a single array field that contains objects, use that
             let array_fields: Vec<_> = obj
@@ -98,9 +95,7 @@ fn extract_rows(json: &serde_json::Value) -> Vec<&serde_json::Map<String, serde_
 }
 
 /// Collect all unique keys from the rows, preserving insertion order.
-fn collect_headers(
-    rows: &[&serde_json::Map<String, serde_json::Value>],
-) -> Vec<String> {
+fn collect_headers(rows: &[&serde_json::Map<String, serde_json::Value>]) -> Vec<String> {
     let mut headers = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for row in rows {

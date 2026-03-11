@@ -27,7 +27,9 @@ pub async fn run(
                 )?;
                 return Ok(());
             }
-            let data = client.get_money_movements(&plan_id, *last_knowledge).await?;
+            let data = client
+                .get_money_movements(&plan_id, *last_knowledge)
+                .await?;
             output::output(&data, format)?;
         }
 
@@ -47,7 +49,9 @@ pub async fn run(
                 return Ok(());
             }
             // Uses same endpoint with month filter
-            let data = client.get_money_movements(&plan_id, *last_knowledge).await?;
+            let data = client
+                .get_money_movements(&plan_id, *last_knowledge)
+                .await?;
             output::output(&data, format)?;
         }
 

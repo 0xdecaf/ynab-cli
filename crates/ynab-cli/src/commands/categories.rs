@@ -43,10 +43,7 @@ pub async fn run(
             output::output(&category, format)?;
         }
 
-        CategoriesCommand::MonthGet {
-            month,
-            category_id,
-        } => {
+        CategoriesCommand::MonthGet { month, category_id } => {
             if dry_run {
                 output::output(
                     &client.dry_run_request(

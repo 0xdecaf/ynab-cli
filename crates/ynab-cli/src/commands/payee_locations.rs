@@ -43,7 +43,9 @@ pub async fn run(
                 )?;
                 return Ok(());
             }
-            let location = client.get_payee_location(&plan_id, payee_location_id).await?;
+            let location = client
+                .get_payee_location(&plan_id, payee_location_id)
+                .await?;
             output::output(&location, format)?;
         }
 
@@ -59,7 +61,9 @@ pub async fn run(
                 )?;
                 return Ok(());
             }
-            let locations = client.get_payee_locations_by_payee(&plan_id, payee_id).await?;
+            let locations = client
+                .get_payee_locations_by_payee(&plan_id, payee_id)
+                .await?;
             output::output(&locations, format)?;
         }
     }
