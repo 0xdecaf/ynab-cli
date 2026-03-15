@@ -18,7 +18,7 @@ case "$ARCH" in
 esac
 case "$OS" in
   darwin) TRIPLE="${TARGET}-apple-darwin" ;;
-  linux)  TRIPLE="${TARGET}-unknown-linux-gnu" ;;
+  linux)  TRIPLE="${TARGET}-unknown-linux-musl" ;;
 esac
 curl -sL "https://github.com/$REPO/releases/download/$TAG/ynab-cli-${TRIPLE}.tar.gz" | tar xz
 sudo mv ynab /usr/local/bin/
