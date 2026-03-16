@@ -23,3 +23,5 @@ csv = "1"
 rmcp = { version = "0.1", features = ["server", "transport-io"] }
 schemars = "0.8"
 clap_complete = "4"
+url = "2"
+open = "5"

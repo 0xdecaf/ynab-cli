@@ -157,13 +157,13 @@ pub enum Command {
 
 #[derive(Subcommand)]
 pub enum AuthCommand {
-    /// Log in with a personal access token
+    /// Log in via OAuth (opens browser) or with a personal access token (--pat)
     Login {
-        /// Use a personal access token
+        /// Use a personal access token instead of OAuth
         #[arg(long)]
         pat: bool,
 
-        /// Token value (will prompt if not provided)
+        /// Token value (will prompt if not provided, only used with --pat)
         #[arg(long)]
         token: Option<String>,
     },

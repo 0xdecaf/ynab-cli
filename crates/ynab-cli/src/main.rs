@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     match &cli.command {
         // Auth doesn't need a client
         Command::Auth { command } => {
-            commands::auth::run(command)?;
+            commands::auth::run(command).await?;
         }
 
         // Schema doesn't need a client
