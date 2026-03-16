@@ -69,8 +69,6 @@ pub fn resolve_plan_id(explicit_id: Option<&str>, global_id: Option<&str>) -> Re
         return Ok(default_id.to_string());
     }
 
-    Err(anyhow::anyhow!(
-        "Plan ID is required. Provide --plan-id, set YNAB_PLAN_ID, or run `ynab plans set-default <id>`.\n\
-         Run `ynab plans list` to see available plans."
-    ))
+    // Fall back to "default" — the YNAB API accepts this as the user's default budget
+    Ok("default".to_string())
 }
