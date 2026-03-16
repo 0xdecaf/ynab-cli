@@ -1,6 +1,6 @@
 {
   "name": "ynab-cli-rs",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "YNAB CLI — command-line interface and MCP server for the YNAB API (Rust)",
   "bin": {
     "ynab": "bin/ynab"
