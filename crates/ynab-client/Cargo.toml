@@ -17,7 +17,7 @@ dirs = "6"
 keyring = { version = "3", features = ["apple-native"] }
 sha2 = "0.10"
 base64 = "0.22"
-rand = "0.9"
+rand = "0.10"
 open = "5"
 url = "2"
 
