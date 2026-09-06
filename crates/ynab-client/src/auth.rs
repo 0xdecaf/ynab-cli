@@ -500,6 +500,14 @@ fn store_file_credentials(creds: &StoredCredentials) -> Result<(), YnabError> {
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
 
+        // `mode(0o600)` here only takes effect when `open` actually creates
+        // the file: the OS ignores the mode argument if the file already
+        // exists, so a pre-existing credentials file with looser
+        // permissions (e.g. left over from an older version, or edited by
+        // hand) would keep those permissions across a rewrite. The
+        // `set_permissions` call below re-tightens unconditionally after
+        // writing, so both the creation race and the overwrite case end up
+        // at 0600.
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
@@ -509,6 +517,10 @@ fn store_file_credentials(creds: &StoredCredentials) -> Result<(), YnabError> {
             .map_err(|e| YnabError::Config(format!("Failed to open credentials file: {e}")))?;
         file.write_all(contents.as_bytes())
             .map_err(|e| YnabError::Config(format!("Failed to write credentials: {e}")))?;
+
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| YnabError::Config(format!("Failed to set permissions: {e}")))?;
     }
 
     #[cfg(not(unix))]
