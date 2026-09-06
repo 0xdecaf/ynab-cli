@@ -16,7 +16,7 @@ chrono.workspace = true
 dirs = "6"
 keyring = { version = "3", features = ["apple-native"] }
 sha2 = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 rand = "0.9"
 open = "5"
 url = "2"
