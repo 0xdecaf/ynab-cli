@@ -8,7 +8,6 @@
 
 <p align="center">
   <a href="https://github.com/0xdecaf/ynab-cli/actions/workflows/ci.yml"><img src="https://github.com/0xdecaf/ynab-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://codecov.io/gh/0xdecaf/ynab-cli"><img src="https://codecov.io/gh/0xdecaf/ynab-cli/graph/badge.svg" alt="codecov"></a>
   <a href="https://github.com/0xdecaf/ynab-cli/releases/latest"><img src="https://img.shields.io/github/v/release/0xdecaf/ynab-cli" alt="GitHub Release"></a>
   <a href="https://www.npmjs.com/package/ynab-cli-rs"><img src="https://img.shields.io/npm/v/ynab-cli-rs" alt="npm"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
