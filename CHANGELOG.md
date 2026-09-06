@@ -25,6 +25,12 @@ All notable changes to this project are documented here. The format follows
 ### Removed
 - The `--verbose` flag, which was accepted but never did anything.
 
+### Security
+- `cargo audit` now ignores `RUSTSEC-2026-0189` (DNS rebinding in rmcp's
+  Streamable HTTP server transport) via `.cargo/audit.toml`. ynab-cli only
+  enables rmcp's stdio transport (`transport-io`), so the vulnerable code
+  path is not compiled in. Tracked for removal with the rmcp 1.x migration.
+
 ## [0.2.0] - 2026-03-16
 
 ### Added

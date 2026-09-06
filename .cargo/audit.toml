@@ -1,0 +1,6 @@
+[advisories]
+# RUSTSEC-2026-0189: DNS rebinding in rmcp's Streamable HTTP server transport.
+# ynab-cli only uses rmcp's stdio transport (feature "transport-io"), so the
+# vulnerable code path is not compiled in. Tracked for removal with the rmcp 1.x
+# migration (Dependabot PR #4).
+ignore = ["RUSTSEC-2026-0189"]
