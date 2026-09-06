@@ -31,10 +31,10 @@ async fn main() -> Result<()> {
         }
 
         // MCP server - resolves its own auth
-        Command::Mcp => {
+        Command::Mcp { read_only } => {
             let token = auth::resolve_token(cli.token.as_deref())?;
             let client = YnabClient::new(token)?;
-            let server = mcp::YnabMcpServer::new(client);
+            let server = mcp::YnabMcpServer::new(client, *read_only);
             server.serve_stdio().await?;
         }
 
@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
                 // Already handled above
                 Command::Auth { .. }
                 | Command::Schema { .. }
-                | Command::Mcp
+                | Command::Mcp { .. }
                 | Command::Completions { .. } => unreachable!(),
             }
         }

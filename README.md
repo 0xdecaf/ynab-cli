@@ -8,7 +8,6 @@
 
 <p align="center">
   <a href="https://github.com/0xdecaf/ynab-cli/actions/workflows/ci.yml"><img src="https://github.com/0xdecaf/ynab-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://codecov.io/gh/0xdecaf/ynab-cli"><img src="https://codecov.io/gh/0xdecaf/ynab-cli/graph/badge.svg" alt="codecov"></a>
   <a href="https://github.com/0xdecaf/ynab-cli/releases/latest"><img src="https://img.shields.io/github/v/release/0xdecaf/ynab-cli" alt="GitHub Release"></a>
   <a href="https://www.npmjs.com/package/ynab-cli-rs"><img src="https://img.shields.io/npm/v/ynab-cli-rs" alt="npm"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
@@ -34,7 +33,7 @@
 
 🔄 **Delta Sync** — Fetch only what changed since your last request. Efficient polling for automation workflows.
 
-🧩 **Full API Coverage** — Every YNAB API endpoint has a dedicated command. Anything missing? `ynab api GET /v1/...` hits the API directly.
+🧩 **Full API Coverage** — Every YNAB API endpoint has a dedicated command. Anything missing? `ynab api GET /plans/...` hits the API directly.
 
 ## Install
 
@@ -124,9 +123,11 @@ ynab scheduled delete --scheduled-transaction-id <ID>     # remove one
 ### Raw API Access
 
 ```bash
-ynab api GET /v1/budgets
-ynab api PATCH /v1/budgets/<ID>/categories/<ID> --body '{"category":{"name":"X"}}'
+ynab api GET /plans
+ynab api PATCH /plans/<ID>/categories/<ID> --body '{"category":{"name":"X"}}'
 ```
+
+The `/v1` prefix is optional; paths are relative to the API root.
 
 ### Output Options
 
@@ -179,6 +180,14 @@ ynab mcp
 }
 ```
 
+### Read-only mode
+
+To let an agent inspect a budget without being able to change it, start the
+server with `ynab mcp --read-only` (or set `YNAB_MCP_READ_ONLY=1` in the MCP
+config's `env`). Every create, update, delete, import, and budget-assignment
+tool then returns an error instead of calling the API. See
+[SECURITY.md](SECURITY.md) for the full threat model.
+
 ### What agents can do
 
 - "How much did I spend on dining this month?"
@@ -188,6 +197,12 @@ ynab mcp
 - "What's my account balance across all accounts?"
 
 The MCP server gives agents full read/write access to your YNAB data through structured tool calls.
+
+### Agent skills
+
+`SKILL.md` and the `skills/` directory are instruction files for coding
+agents (Claude Code and compatible tools) that describe how to drive
+`ynab-cli` well. They are not required to use the CLI.
 
 ## Global Flags
 
@@ -199,16 +214,17 @@ The MCP server gives agents full read/write access to your YNAB data through str
 | `--fields <F>` | Comma-separated field filter |
 | `--output <FILE>` | Write to file instead of stdout |
 | `--dry-run` | Preview HTTP request without executing |
-| `--verbose` | Show HTTP request/response details |
 
 ## Authentication
 
 Token resolution order:
 
-1. `YNAB_ACCESS_TOKEN` environment variable
-2. `--token` flag
-3. macOS Keychain (via `ynab auth login`)
-4. `~/.config/ynab/credentials.json` fallback
+1. `--token <TOKEN>` flag (highest priority)
+2. `YNAB_ACCESS_TOKEN` environment variable
+3. OS keychain entry saved by `ynab auth login`
+4. The ynab-cli credentials file in the platform config directory
+   (`~/.config/ynab/` on Linux, `~/Library/Application Support/ynab/` on
+   macOS), mode 0600
 
 ## Contributing
 

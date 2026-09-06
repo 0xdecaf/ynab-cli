@@ -49,7 +49,7 @@ pub async fn run(
                 return Ok(());
             }
             let data = client
-                .get_money_movements(&plan_id, *last_knowledge)
+                .get_money_movements_for_month(&plan_id, month, *last_knowledge)
                 .await?;
             output::output(&data, out)?;
         }
@@ -88,7 +88,7 @@ pub async fn run(
                 return Ok(());
             }
             let data = client
-                .get_money_movement_groups(&plan_id, *last_knowledge)
+                .get_money_movement_groups_for_month(&plan_id, month, *last_knowledge)
                 .await?;
             output::output(&data, out)?;
         }

@@ -117,7 +117,7 @@ Resources supporting delta sync: accounts, transactions, categories, payees, mon
 For any endpoint not covered by specific commands:
 
 ```bash
-ynab api GET /v1/budgets
-ynab api GET /v1/budgets/<PLAN_ID>/accounts
-ynab api POST /v1/budgets/<PLAN_ID>/transactions --body '{"transaction":{...}}'
+ynab api GET /plans
+ynab api GET /plans/<PLAN_ID>/accounts
+ynab api POST /plans/<PLAN_ID>/transactions --body '{"transaction":{...}}'
 ```

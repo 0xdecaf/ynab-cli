@@ -33,10 +33,6 @@ pub struct Cli {
     #[arg(long, global = true, env = "YNAB_ACCESS_TOKEN", hide_env_values = true)]
     pub token: Option<String>,
 
-    /// Show HTTP request/response details
-    #[arg(long, global = true)]
-    pub verbose: bool,
-
     /// Convert milliunit amounts to dollars (divide by 1000)
     #[arg(long, global = true)]
     pub dollars: bool,
@@ -131,8 +127,19 @@ pub enum Command {
         resource_method: String,
     },
 
-    /// Start MCP server for AI agent integration (stdio transport)
-    Mcp,
+    /// Start the MCP server (stdio transport)
+    Mcp {
+        /// Disable all tools that modify data (create, update, delete, import, assign, non-GET raw)
+        #[arg(
+            long,
+            env = "YNAB_MCP_READ_ONLY",
+            num_args = 0..=1,
+            default_value_t = false,
+            default_missing_value = "true",
+            value_parser = clap::builder::BoolishValueParser::new(),
+        )]
+        read_only: bool,
+    },
 
     /// Generate shell completions
     Completions {
@@ -145,7 +152,7 @@ pub enum Command {
     Api {
         /// HTTP method (GET, POST, PUT, PATCH, DELETE)
         method: String,
-        /// API path (e.g., /v1/plans)
+        /// API path (e.g., /plans or /v1/plans; the /v1 prefix is optional)
         path: String,
         /// Request body as JSON
         #[arg(long)]
@@ -494,4 +501,45 @@ pub enum MoneyMovementsCommand {
         #[arg(long)]
         last_knowledge: Option<i64>,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    fn parse_read_only(args: &[&str]) -> bool {
+        let cli = Cli::try_parse_from(args).unwrap_or_else(|e| {
+            panic!("failed to parse {args:?}: {e}");
+        });
+        match cli.command {
+            Command::Mcp { read_only } => read_only,
+            _ => panic!("expected Mcp command"),
+        }
+    }
+
+    #[test]
+    fn mcp_read_only_defaults_to_false() {
+        assert!(!parse_read_only(&["ynab", "mcp"]));
+    }
+
+    #[test]
+    fn mcp_read_only_bare_flag_is_true() {
+        assert!(parse_read_only(&["ynab", "mcp", "--read-only"]));
+    }
+
+    #[test]
+    fn mcp_read_only_equals_one_is_true() {
+        assert!(parse_read_only(&["ynab", "mcp", "--read-only=1"]));
+    }
+
+    #[test]
+    fn mcp_read_only_equals_zero_is_false() {
+        assert!(!parse_read_only(&["ynab", "mcp", "--read-only=0"]));
+    }
+
+    #[test]
+    fn mcp_read_only_equals_yes_is_true() {
+        assert!(parse_read_only(&["ynab", "mcp", "--read-only=yes"]));
+    }
 }
