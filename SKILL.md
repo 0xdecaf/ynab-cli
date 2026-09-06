@@ -88,7 +88,6 @@ ynab accounts list
 | `--output <FILE>` | Write output to file instead of stdout |
 | `--dry-run` | Preview HTTP request without executing |
 | `--token <TOKEN>` | Override access token |
-| `--verbose` | Show HTTP request/response details |
 
 ## Complete Command Reference
 

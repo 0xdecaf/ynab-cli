@@ -198,6 +198,12 @@ tool then returns an error instead of calling the API. See
 
 The MCP server gives agents full read/write access to your YNAB data through structured tool calls.
 
+### Agent skills
+
+`SKILL.md` and the `skills/` directory are instruction files for coding
+agents (Claude Code and compatible tools) that describe how to drive
+`ynab-cli` well. They are not required to use the CLI.
+
 ## Global Flags
 
 | Flag | Description |
@@ -208,7 +214,6 @@ The MCP server gives agents full read/write access to your YNAB data through str
 | `--fields <F>` | Comma-separated field filter |
 | `--output <FILE>` | Write to file instead of stdout |
 | `--dry-run` | Preview HTTP request without executing |
-| `--verbose` | Show HTTP request/response details |
 
 ## Authentication
 

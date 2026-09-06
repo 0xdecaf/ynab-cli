@@ -33,10 +33,6 @@ pub struct Cli {
     #[arg(long, global = true, env = "YNAB_ACCESS_TOKEN", hide_env_values = true)]
     pub token: Option<String>,
 
-    /// Show HTTP request/response details
-    #[arg(long, global = true)]
-    pub verbose: bool,
-
     /// Convert milliunit amounts to dollars (divide by 1000)
     #[arg(long, global = true)]
     pub dollars: bool,
