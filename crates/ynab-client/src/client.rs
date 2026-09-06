@@ -753,6 +753,42 @@ impl YnabClient {
             .await?;
         Ok(resp.data)
     }
+
+    pub async fn get_money_movements_for_month(
+        &self,
+        plan_id: &str,
+        month: &str,
+        last_knowledge: Option<i64>,
+    ) -> Result<MoneyMovementsData, YnabError> {
+        let query = match last_knowledge {
+            Some(k) => format!("?last_knowledge_of_server={k}"),
+            None => String::new(),
+        };
+        let resp: ApiResponse<MoneyMovementsData> = self
+            .get(&format!(
+                "/plans/{plan_id}/months/{month}/money_movements{query}"
+            ))
+            .await?;
+        Ok(resp.data)
+    }
+
+    pub async fn get_money_movement_groups_for_month(
+        &self,
+        plan_id: &str,
+        month: &str,
+        last_knowledge: Option<i64>,
+    ) -> Result<MoneyMovementGroupsData, YnabError> {
+        let query = match last_knowledge {
+            Some(k) => format!("?last_knowledge_of_server={k}"),
+            None => String::new(),
+        };
+        let resp: ApiResponse<MoneyMovementGroupsData> = self
+            .get(&format!(
+                "/plans/{plan_id}/months/{month}/money_movement_groups{query}"
+            ))
+            .await?;
+        Ok(resp.data)
+    }
 }
 
 #[cfg(test)]
