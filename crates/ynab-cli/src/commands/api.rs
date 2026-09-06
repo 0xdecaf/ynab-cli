@@ -16,12 +16,12 @@ pub async fn run(
         None => None,
     };
 
-    let path = ynab_client::normalize_raw_path(path);
-    let path = path.as_str();
-
     if dry_run {
+        // `raw_request` normalizes the path itself; normalize here too so the
+        // preview matches what will actually be requested.
+        let display_path = ynab_client::normalize_raw_path(path);
         output::output(
-            &client.dry_run_request(method, path, body_value.as_ref()),
+            &client.dry_run_request(method, &display_path, body_value.as_ref()),
             out,
         )?;
         return Ok(());
