@@ -831,7 +831,9 @@ impl YnabMcpServer {
         #[schemars(description = "HTTP method: GET, POST, PUT, PATCH, DELETE")]
         method: String,
         #[tool(param)]
-        #[schemars(description = "API path starting with /v1/ (e.g., /v1/plans)")]
+        #[schemars(
+            description = "API path relative to the API root, e.g. /plans/{plan_id}/accounts. A leading /v1 is accepted and ignored."
+        )]
         path: String,
         #[tool(param)]
         #[schemars(description = "Optional request body as JSON string")]

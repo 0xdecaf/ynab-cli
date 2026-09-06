@@ -34,7 +34,7 @@
 
 🔄 **Delta Sync** — Fetch only what changed since your last request. Efficient polling for automation workflows.
 
-🧩 **Full API Coverage** — Every YNAB API endpoint has a dedicated command. Anything missing? `ynab api GET /v1/...` hits the API directly.
+🧩 **Full API Coverage** — Every YNAB API endpoint has a dedicated command. Anything missing? `ynab api GET /plans/...` hits the API directly.
 
 ## Install
 
@@ -124,9 +124,11 @@ ynab scheduled delete --scheduled-transaction-id <ID>     # remove one
 ### Raw API Access
 
 ```bash
-ynab api GET /v1/budgets
-ynab api PATCH /v1/budgets/<ID>/categories/<ID> --body '{"category":{"name":"X"}}'
+ynab api GET /plans
+ynab api PATCH /plans/<ID>/categories/<ID> --body '{"category":{"name":"X"}}'
 ```
+
+The `/v1` prefix is optional; paths are relative to the API root.
 
 ### Output Options
 

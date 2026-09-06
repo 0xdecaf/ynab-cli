@@ -6,12 +6,39 @@ use crate::error::YnabError;
 use crate::rate_limit::RateLimiter;
 
 const BASE_URL: &str = "https://api.ynab.com/v1";
+const HTTP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// Normalize a user-supplied raw API path so it can be appended to the
+/// client's base URL (which already ends in `/v1`).
+///
+/// Accepts `/v1/plans`, `v1/plans`, `/plans`, or `plans` and returns `/plans`.
+/// Query strings are preserved.
+pub fn normalize_raw_path(path: &str) -> String {
+    let trimmed = path.trim();
+    let with_slash = if trimmed.starts_with('/') {
+        trimmed.to_string()
+    } else {
+        format!("/{trimmed}")
+    };
+    match with_slash.strip_prefix("/v1") {
+        Some("") | Some("/") => "/".to_string(),
+        Some(rest) if rest.starts_with('/') || rest.starts_with('?') => {
+            if rest.starts_with('?') {
+                format!("/{rest}")
+            } else {
+                rest.to_string()
+            }
+        }
+        _ => with_slash,
+    }
+}
 
 /// HTTP client for the YNAB API.
 #[derive(Clone)]
 pub struct YnabClient {
     http: reqwest::Client,
     token: String,
+    base_url: String,
     rate_limiter: std::sync::Arc<RateLimiter>,
 }
 
@@ -27,6 +54,13 @@ pub struct DryRunRequest {
 
 impl YnabClient {
     pub fn new(token: String) -> Result<Self, YnabError> {
+        Self::with_base_url(token, BASE_URL)
+    }
+
+    /// Construct a client against a non-default base URL (used by tests
+    /// and for self-hosted proxies). `base_url` must include the `/v1`
+    /// segment and must not end with a slash.
+    pub fn with_base_url(token: String, base_url: impl Into<String>) -> Result<Self, YnabError> {
         let mut headers = HeaderMap::new();
         let auth_value = HeaderValue::from_str(&format!("Bearer {token}"))
             .map_err(|e| YnabError::Other(format!("Invalid token: {e}")))?;
@@ -35,13 +69,19 @@ impl YnabClient {
         let http = reqwest::Client::builder()
             .default_headers(headers)
             .user_agent(format!("ynab-cli/{}", env!("CARGO_PKG_VERSION")))
+            .timeout(HTTP_TIMEOUT)
             .build()?;
 
         Ok(Self {
             http,
             token,
+            base_url: base_url.into().trim_end_matches('/').to_string(),
             rate_limiter: std::sync::Arc::new(RateLimiter::new()),
         })
+    }
+
+    fn url(&self, path: &str) -> String {
+        format!("{}{}", self.base_url, path)
     }
 
     /// Build a DryRunRequest for display purposes.
@@ -60,7 +100,7 @@ impl YnabClient {
 
         DryRunRequest {
             method: method.to_string(),
-            url: format!("{BASE_URL}{path}"),
+            url: self.url(path),
             headers,
             body: body.cloned(),
         }
@@ -82,7 +122,7 @@ impl YnabClient {
     async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, YnabError> {
         self.check_rate_limit()?;
         self.rate_limiter.record();
-        let url = format!("{BASE_URL}{path}");
+        let url = self.url(path);
         let response = self.http.get(&url).send().await?;
         self.handle_response(response).await
     }
@@ -94,7 +134,7 @@ impl YnabClient {
     ) -> Result<T, YnabError> {
         self.check_rate_limit()?;
         self.rate_limiter.record();
-        let url = format!("{BASE_URL}{path}");
+        let url = self.url(path);
         let response = self.http.post(&url).json(body).send().await?;
         self.handle_response(response).await
     }
@@ -106,7 +146,7 @@ impl YnabClient {
     ) -> Result<T, YnabError> {
         self.check_rate_limit()?;
         self.rate_limiter.record();
-        let url = format!("{BASE_URL}{path}");
+        let url = self.url(path);
         let response = self.http.put(&url).json(body).send().await?;
         self.handle_response(response).await
     }
@@ -118,7 +158,7 @@ impl YnabClient {
     ) -> Result<T, YnabError> {
         self.check_rate_limit()?;
         self.rate_limiter.record();
-        let url = format!("{BASE_URL}{path}");
+        let url = self.url(path);
         let response = self.http.patch(&url).json(body).send().await?;
         self.handle_response(response).await
     }
@@ -126,7 +166,7 @@ impl YnabClient {
     async fn delete_request<T: DeserializeOwned>(&self, path: &str) -> Result<T, YnabError> {
         self.check_rate_limit()?;
         self.rate_limiter.record();
-        let url = format!("{BASE_URL}{path}");
+        let url = self.url(path);
         let response = self.http.delete(&url).send().await?;
         self.handle_response(response).await
     }
@@ -643,7 +683,8 @@ impl YnabClient {
     ) -> Result<serde_json::Value, YnabError> {
         self.check_rate_limit()?;
         self.rate_limiter.record();
-        let url = format!("{BASE_URL}{path}");
+        let path = normalize_raw_path(path);
+        let url = self.url(&path);
         let request = match method.to_uppercase().as_str() {
             "GET" => self.http.get(&url),
             "POST" => {
@@ -711,5 +752,46 @@ impl YnabClient {
             .get(&format!("/plans/{plan_id}/money_movement_groups{query}"))
             .await?;
         Ok(resp.data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_raw_path;
+
+    #[test]
+    fn strips_leading_v1_segment() {
+        assert_eq!(normalize_raw_path("/v1/plans"), "/plans");
+        assert_eq!(
+            normalize_raw_path("/v1/plans/abc/accounts"),
+            "/plans/abc/accounts"
+        );
+    }
+
+    #[test]
+    fn leaves_paths_without_v1_alone() {
+        assert_eq!(normalize_raw_path("/plans"), "/plans");
+        assert_eq!(normalize_raw_path("/v10/plans"), "/v10/plans");
+        assert_eq!(normalize_raw_path("/v1plans"), "/v1plans");
+    }
+
+    #[test]
+    fn adds_missing_leading_slash() {
+        assert_eq!(normalize_raw_path("plans"), "/plans");
+        assert_eq!(normalize_raw_path("v1/plans"), "/plans");
+    }
+
+    #[test]
+    fn preserves_query_strings() {
+        assert_eq!(
+            normalize_raw_path("/v1/plans/abc/transactions?since_date=2026-01-01"),
+            "/plans/abc/transactions?since_date=2026-01-01"
+        );
+    }
+
+    #[test]
+    fn bare_v1_becomes_root() {
+        assert_eq!(normalize_raw_path("/v1"), "/");
+        assert_eq!(normalize_raw_path("/v1/"), "/");
     }
 }

@@ -145,7 +145,7 @@ pub enum Command {
     Api {
         /// HTTP method (GET, POST, PUT, PATCH, DELETE)
         method: String,
-        /// API path (e.g., /v1/plans)
+        /// API path (e.g., /plans or /v1/plans; the /v1 prefix is optional)
         path: String,
         /// Request body as JSON
         #[arg(long)]

@@ -224,11 +224,11 @@ ynab schema accounts.get          # View schema for any resource.method
 
 ```bash
 # Access any YNAB API endpoint directly
-ynab api GET /v1/budgets
-ynab api GET /v1/budgets/<PLAN_ID>/accounts
-ynab api POST /v1/budgets/<PLAN_ID>/transactions --body '{"transaction":{...}}'
-ynab api PATCH /v1/budgets/<PLAN_ID>/categories/<ID> --body '{"category":{"name":"New"}}'
-ynab api DELETE /v1/budgets/<PLAN_ID>/scheduled_transactions/<ID>
+ynab api GET /plans
+ynab api GET /plans/<PLAN_ID>/accounts
+ynab api POST /plans/<PLAN_ID>/transactions --body '{"transaction":{...}}'
+ynab api PATCH /plans/<PLAN_ID>/categories/<ID> --body '{"category":{"name":"New"}}'
+ynab api DELETE /plans/<PLAN_ID>/scheduled_transactions/<ID>
 ```
 
 ### completions — Shell Completions

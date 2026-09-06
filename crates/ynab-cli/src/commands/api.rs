@@ -16,6 +16,9 @@ pub async fn run(
         None => None,
     };
 
+    let path = ynab_client::normalize_raw_path(path);
+    let path = path.as_str();
+
     if dry_run {
         output::output(
             &client.dry_run_request(method, path, body_value.as_ref()),
