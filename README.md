@@ -222,7 +222,9 @@ Token resolution order:
 1. `--token <TOKEN>` flag (highest priority)
 2. `YNAB_ACCESS_TOKEN` environment variable
 3. OS keychain entry saved by `ynab auth login`
-4. Config file fallback (`~/.config/ynab/`, mode 0600)
+4. The ynab-cli credentials file in the platform config directory
+   (`~/.config/ynab/` on Linux, `~/Library/Application Support/ynab/` on
+   macOS), mode 0600
 
 ## Contributing
 
