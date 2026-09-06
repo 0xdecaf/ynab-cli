@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- An explicit `--token` now takes precedence over `YNAB_ACCESS_TOKEN`;
+  previously the env var silently won.
 - `ynab api` and the `ynab_api_raw` MCP tool no longer double the `/v1`
   segment; the prefix is now optional.
 - `money-movements by-month` and `groups-by-month` now call the

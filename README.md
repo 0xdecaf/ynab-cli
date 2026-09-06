@@ -219,10 +219,10 @@ agents (Claude Code and compatible tools) that describe how to drive
 
 Token resolution order:
 
-1. `YNAB_ACCESS_TOKEN` environment variable
-2. `--token` flag
-3. macOS Keychain (via `ynab auth login`)
-4. `~/.config/ynab/credentials.json` fallback
+1. `--token <TOKEN>` flag (highest priority)
+2. `YNAB_ACCESS_TOKEN` environment variable
+3. OS keychain entry saved by `ynab auth login`
+4. Config file fallback (`~/.config/ynab/`, mode 0600)
 
 ## Contributing
 

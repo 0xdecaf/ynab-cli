@@ -52,22 +52,22 @@ pub fn generate_state() -> String {
 ///
 /// Resolution order:
 /// 1. `YNAB_ACCESS_TOKEN` environment variable
-/// 2. Explicit token passed via `--token` flag
+/// 2. `YNAB_ACCESS_TOKEN` environment variable
 /// 3. OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
 /// 4. File-based fallback (~/.config/ynab/credentials.json)
 ///
 /// For OAuth tokens, auto-refreshes if expired.
 pub fn resolve_token(explicit_token: Option<&str>) -> Result<String, YnabError> {
-    // 1. Environment variable
+    // 1. Explicit token
+    if let Some(token) = explicit_token {
+        return Ok(token.to_string());
+    }
+
+    // 2. Environment variable
     if let Ok(token) = std::env::var("YNAB_ACCESS_TOKEN")
         && !token.is_empty()
     {
         return Ok(token);
-    }
-
-    // 2. Explicit token
-    if let Some(token) = explicit_token {
-        return Ok(token.to_string());
     }
 
     // 3. OS keychain
@@ -96,16 +96,16 @@ pub fn resolve_token(explicit_token: Option<&str>) -> Result<String, YnabError> 
 /// Resolve token asynchronously (needed for token refresh which makes HTTP calls).
 /// This is the preferred method for commands that already have an async context.
 pub async fn resolve_token_async(explicit_token: Option<&str>) -> Result<String, YnabError> {
-    // 1. Environment variable
+    // 1. Explicit token
+    if let Some(token) = explicit_token {
+        return Ok(token.to_string());
+    }
+
+    // 2. Environment variable
     if let Ok(token) = std::env::var("YNAB_ACCESS_TOKEN")
         && !token.is_empty()
     {
         return Ok(token);
-    }
-
-    // 2. Explicit token
-    if let Some(token) = explicit_token {
-        return Ok(token.to_string());
     }
 
     // 3. OS keychain
@@ -507,4 +507,24 @@ fn credentials_path() -> Result<PathBuf, YnabError> {
     let config_dir = dirs::config_dir()
         .ok_or_else(|| YnabError::Config("Could not determine config directory".into()))?;
     Ok(config_dir.join("ynab").join("credentials.json"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_token_beats_environment() {
+        unsafe {
+            std::env::set_var("YNAB_ACCESS_TOKEN", "from-env");
+        }
+
+        let result = resolve_token(Some("from-flag"));
+
+        unsafe {
+            std::env::remove_var("YNAB_ACCESS_TOKEN");
+        }
+
+        assert_eq!(result.unwrap(), "from-flag");
+    }
 }
