@@ -25,3 +25,6 @@ schemars = "0.8"
 clap_complete = "4"
 url = "2"
 open = "5"
+
+[dev-dependencies]
+wiremock = "0.6"

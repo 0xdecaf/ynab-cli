@@ -180,6 +180,14 @@ ynab mcp
 }
 ```
 
+### Read-only mode
+
+To let an agent inspect a budget without being able to change it, start the
+server with `ynab mcp --read-only` (or set `YNAB_MCP_READ_ONLY=1` in the MCP
+config's `env`). Every create, update, delete, import, and budget-assignment
+tool then returns an error instead of calling the API. See
+[SECURITY.md](SECURITY.md) for the full threat model.
+
 ### What agents can do
 
 - "How much did I spend on dining this month?"

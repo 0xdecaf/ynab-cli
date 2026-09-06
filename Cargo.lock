@@ -2278,6 +2278,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
+ "wiremock",
  "ynab-client",
  "ynab-types",
 ]

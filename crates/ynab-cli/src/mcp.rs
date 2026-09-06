@@ -22,17 +22,33 @@ Most tools require a plan_id parameter. Get one from ynab_plans_list first.
 Delta sync: Many list tools accept last_knowledge_of_server for incremental updates.
 Pass the server_knowledge value from a previous response to get only changes since then.
 
-Raw API: Use ynab_api_raw for any endpoint not covered by specific tools.";
+Raw API: Use ynab_api_raw for any endpoint not covered by specific tools.
+
+Read-only mode: when the server is started with --read-only, every tool that creates,
+updates, deletes, imports, or assigns money returns an error instead of calling the API.
+Tell the user to restart without --read-only if they need writes.";
 
 /// MCP server for the YNAB API.
 #[derive(Clone)]
 pub struct YnabMcpServer {
     client: YnabClient,
+    read_only: bool,
 }
 
+const READ_ONLY_MESSAGE: &str = "This server is running in read-only mode; write tools are disabled. \
+Restart `ynab mcp` without --read-only (or unset YNAB_MCP_READ_ONLY) to enable them.";
+
 impl YnabMcpServer {
-    pub fn new(client: YnabClient) -> Self {
-        Self { client }
+    pub fn new(client: YnabClient, read_only: bool) -> Self {
+        Self { client, read_only }
+    }
+
+    fn guard_write(&self) -> Result<(), String> {
+        if self.read_only {
+            Err(READ_ONLY_MESSAGE.to_string())
+        } else {
+            Ok(())
+        }
     }
 
     pub async fn serve_stdio(self) -> anyhow::Result<()> {
@@ -160,6 +176,7 @@ impl YnabMcpServer {
         #[schemars(description = "Opening balance in milliunits (1000 = $1.00)")]
         balance: i64,
     ) -> Result<String, String> {
+        self.guard_write()?;
         let acct_type: ynab_types::AccountType =
             serde_json::from_value(serde_json::json!(account_type))
                 .map_err(|e| format!("Invalid account type: {e}"))?;
@@ -238,6 +255,7 @@ impl YnabMcpServer {
         #[schemars(description = "Transaction JSON object")]
         transaction_json: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         let txn: ynab_types::SaveTransaction =
             serde_json::from_str(&transaction_json).map_err(|e| format!("Invalid JSON: {e}"))?;
         self.client
@@ -260,6 +278,7 @@ impl YnabMcpServer {
         #[schemars(description = "Updated fields as JSON object")]
         transaction_json: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         let txn: serde_json::Value =
             serde_json::from_str(&transaction_json).map_err(|e| format!("Invalid JSON: {e}"))?;
         self.client
@@ -281,6 +300,7 @@ impl YnabMcpServer {
         #[schemars(description = "JSON array of transaction objects to update")]
         transactions_json: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         let txns: Vec<serde_json::Value> =
             serde_json::from_str(&transactions_json).map_err(|e| format!("Invalid JSON: {e}"))?;
         self.client
@@ -300,6 +320,7 @@ impl YnabMcpServer {
         #[schemars(description = "Transaction UUID to delete")]
         transaction_id: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         self.client
             .delete_transaction(&plan_id, &transaction_id)
             .await
@@ -314,6 +335,7 @@ impl YnabMcpServer {
         #[schemars(description = "Plan (budget) UUID")]
         plan_id: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         self.client
             .import_transactions(&plan_id)
             .await
@@ -553,6 +575,7 @@ impl YnabMcpServer {
         )]
         category_json: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         let category: serde_json::Value =
             serde_json::from_str(&category_json).map_err(|e| format!("Invalid JSON: {e}"))?;
         self.client
@@ -580,6 +603,7 @@ impl YnabMcpServer {
         #[schemars(description = "Budgeted amount in milliunits (1000 = $1.00)")]
         budgeted: i64,
     ) -> Result<String, String> {
+        self.guard_write()?;
         self.client
             .update_category_month(&plan_id, &month, &category_id, budgeted)
             .await
@@ -636,6 +660,7 @@ impl YnabMcpServer {
         #[schemars(description = "Updated fields as JSON (e.g., {\"name\": \"New Name\"})")]
         payee_json: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         let payee: serde_json::Value =
             serde_json::from_str(&payee_json).map_err(|e| format!("Invalid JSON: {e}"))?;
         self.client
@@ -777,6 +802,7 @@ impl YnabMcpServer {
         #[schemars(description = "Scheduled transaction UUID to delete")]
         scheduled_transaction_id: String,
     ) -> Result<String, String> {
+        self.guard_write()?;
         self.client
             .delete_scheduled_transaction(&plan_id, &scheduled_transaction_id)
             .await
@@ -839,6 +865,9 @@ impl YnabMcpServer {
         #[schemars(description = "Optional request body as JSON string")]
         body: Option<String>,
     ) -> Result<String, String> {
+        if !method.eq_ignore_ascii_case("GET") {
+            self.guard_write()?;
+        }
         let body_value = match body {
             Some(ref b) => Some(
                 serde_json::from_str::<serde_json::Value>(b)
@@ -862,5 +891,71 @@ impl ServerHandler for YnabMcpServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    async fn server(read_only: bool) -> (MockServer, YnabMcpServer) {
+        let mock = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {"transaction": {"id": "t1", "date": "2026-01-01", "amount": 0,
+                          "cleared": "cleared", "approved": true, "account_id": "a1", "deleted": true,
+                          "account_name": "Checking", "subtransactions": []}}
+            })))
+            .mount(&mock)
+            .await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {"user": {"id": "u1"}}
+            })))
+            .mount(&mock)
+            .await;
+        let client = YnabClient::with_base_url("t".into(), format!("{}/v1", mock.uri())).unwrap();
+        (mock, YnabMcpServer::new(client, read_only))
+    }
+
+    #[tokio::test]
+    async fn read_only_blocks_destructive_tools_before_any_request() {
+        let (mock, srv) = server(true).await;
+        let err = srv
+            .ynab_transactions_delete("p1".into(), "t1".into())
+            .await
+            .unwrap_err();
+        assert!(err.contains("read-only"), "got: {err}");
+        assert!(mock.received_requests().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn read_only_blocks_non_get_raw_requests_but_allows_get() {
+        let (_mock, srv) = server(true).await;
+        let err = srv
+            .ynab_api_raw("DELETE".into(), "/plans/p1".into(), None)
+            .await
+            .unwrap_err();
+        assert!(err.contains("read-only"), "got: {err}");
+        srv.ynab_api_raw("get".into(), "/user".into(), None)
+            .await
+            .expect("GET must be allowed in read-only mode");
+    }
+
+    #[tokio::test]
+    async fn read_only_still_allows_read_tools() {
+        let (_mock, srv) = server(true).await;
+        srv.ynab_user_get().await.expect("read tool must work");
+    }
+
+    #[tokio::test]
+    async fn write_mode_reaches_the_api() {
+        let (mock, srv) = server(false).await;
+        srv.ynab_transactions_delete("p1".into(), "t1".into())
+            .await
+            .expect("delete should succeed against the mock");
+        assert_eq!(mock.received_requests().await.unwrap().len(), 1);
     }
 }

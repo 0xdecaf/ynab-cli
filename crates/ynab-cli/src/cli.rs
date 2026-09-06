@@ -131,8 +131,12 @@ pub enum Command {
         resource_method: String,
     },
 
-    /// Start MCP server for AI agent integration (stdio transport)
-    Mcp,
+    /// Start the MCP server (stdio transport)
+    Mcp {
+        /// Disable all tools that modify data (create, update, delete, import, assign, non-GET raw)
+        #[arg(long, env = "YNAB_MCP_READ_ONLY")]
+        read_only: bool,
+    },
 
     /// Generate shell completions
     Completions {
