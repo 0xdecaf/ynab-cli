@@ -51,7 +51,7 @@ pub fn generate_state() -> String {
 /// Resolves the YNAB access token from available sources.
 ///
 /// Resolution order:
-/// 1. `YNAB_ACCESS_TOKEN` environment variable
+/// 1. Explicit token passed via `--token` flag
 /// 2. `YNAB_ACCESS_TOKEN` environment variable
 /// 3. OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
 /// 4. File-based fallback (~/.config/ynab/credentials.json)
@@ -93,8 +93,16 @@ pub fn resolve_token(explicit_token: Option<&str>) -> Result<String, YnabError> 
     Err(YnabError::NotAuthenticated)
 }
 
-/// Resolve token asynchronously (needed for token refresh which makes HTTP calls).
-/// This is the preferred method for commands that already have an async context.
+/// Resolves the YNAB access token from available sources asynchronously.
+///
+/// Resolution order:
+/// 1. Explicit token passed via `--token` flag
+/// 2. `YNAB_ACCESS_TOKEN` environment variable
+/// 3. OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
+/// 4. File-based fallback (~/.config/ynab/credentials.json)
+///
+/// For OAuth tokens, auto-refreshes if expired. This is the preferred method for
+/// commands that already have an async context.
 pub async fn resolve_token_async(explicit_token: Option<&str>) -> Result<String, YnabError> {
     // 1. Explicit token
     if let Some(token) = explicit_token {
@@ -515,12 +523,16 @@ mod tests {
 
     #[test]
     fn explicit_token_beats_environment() {
+        // SAFETY: this is the only test in the workspace that touches YNAB_ACCESS_TOKEN,
+        // and it restores the variable before returning.
         unsafe {
             std::env::set_var("YNAB_ACCESS_TOKEN", "from-env");
         }
 
         let result = resolve_token(Some("from-flag"));
 
+        // SAFETY: this is the only test in the workspace that touches YNAB_ACCESS_TOKEN,
+        // and it restores the variable before returning.
         unsafe {
             std::env::remove_var("YNAB_ACCESS_TOKEN");
         }
