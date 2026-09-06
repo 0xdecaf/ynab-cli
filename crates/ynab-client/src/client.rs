@@ -59,7 +59,10 @@ impl YnabClient {
 
     /// Construct a client against a non-default base URL (used by tests
     /// and for self-hosted proxies). `base_url` must include the `/v1`
-    /// segment and must not end with a slash.
+    /// segment; a trailing slash is stripped.
+    ///
+    /// The bearer token is sent as a default header to whatever host this
+    /// points at; only pass hosts you trust.
     pub fn with_base_url(token: String, base_url: impl Into<String>) -> Result<Self, YnabError> {
         let mut headers = HeaderMap::new();
         let auth_value = HeaderValue::from_str(&format!("Bearer {token}"))

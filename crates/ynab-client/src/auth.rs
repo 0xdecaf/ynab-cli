@@ -48,25 +48,27 @@ pub fn generate_state() -> String {
 
 // --- Token resolution ---
 
+/// Steps 1 and 2 of token resolution: an explicit token wins over the
+/// environment. Empty strings are treated as absent.
+fn first_present(explicit_token: Option<&str>, env_token: Option<String>) -> Option<String> {
+    explicit_token
+        .filter(|t| !t.is_empty())
+        .map(str::to_string)
+        .or(env_token.filter(|t| !t.is_empty()))
+}
+
 /// Resolves the YNAB access token from available sources.
 ///
 /// Resolution order:
 /// 1. Explicit token passed via `--token` flag
 /// 2. `YNAB_ACCESS_TOKEN` environment variable
-/// 3. OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
+/// 3. OS keychain (macOS Keychain; other platforms fall back to the credentials file)
 /// 4. File-based fallback (~/.config/ynab/credentials.json)
 ///
 /// For OAuth tokens, auto-refreshes if expired.
 pub fn resolve_token(explicit_token: Option<&str>) -> Result<String, YnabError> {
-    // 1. Explicit token
-    if let Some(token) = explicit_token {
-        return Ok(token.to_string());
-    }
-
-    // 2. Environment variable
-    if let Ok(token) = std::env::var("YNAB_ACCESS_TOKEN")
-        && !token.is_empty()
-    {
+    // 1 and 2. Explicit token, then environment variable.
+    if let Some(token) = first_present(explicit_token, std::env::var("YNAB_ACCESS_TOKEN").ok()) {
         return Ok(token);
     }
 
@@ -98,21 +100,14 @@ pub fn resolve_token(explicit_token: Option<&str>) -> Result<String, YnabError> 
 /// Resolution order:
 /// 1. Explicit token passed via `--token` flag
 /// 2. `YNAB_ACCESS_TOKEN` environment variable
-/// 3. OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
+/// 3. OS keychain (macOS Keychain; other platforms fall back to the credentials file)
 /// 4. File-based fallback (~/.config/ynab/credentials.json)
 ///
 /// For OAuth tokens, auto-refreshes if expired. This is the preferred method for
 /// commands that already have an async context.
 pub async fn resolve_token_async(explicit_token: Option<&str>) -> Result<String, YnabError> {
-    // 1. Explicit token
-    if let Some(token) = explicit_token {
-        return Ok(token.to_string());
-    }
-
-    // 2. Environment variable
-    if let Ok(token) = std::env::var("YNAB_ACCESS_TOKEN")
-        && !token.is_empty()
-    {
+    // 1 and 2. Explicit token, then environment variable.
+    if let Some(token) = first_present(explicit_token, std::env::var("YNAB_ACCESS_TOKEN").ok()) {
         return Ok(token);
     }
 
@@ -498,14 +493,28 @@ fn store_file_credentials(creds: &StoredCredentials) -> Result<(), YnabError> {
         json["expires_at"] = serde_json::json!(expires_at);
     }
 
-    std::fs::write(&path, serde_json::to_string_pretty(&json)?)
-        .map_err(|e| YnabError::Config(format!("Failed to write credentials: {e}")))?;
+    let contents = serde_json::to_string_pretty(&json)?;
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
-            .map_err(|e| YnabError::Config(format!("Failed to set permissions: {e}")))?;
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&path)
+            .map_err(|e| YnabError::Config(format!("Failed to open credentials file: {e}")))?;
+        file.write_all(contents.as_bytes())
+            .map_err(|e| YnabError::Config(format!("Failed to write credentials: {e}")))?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        std::fs::write(&path, contents)
+            .map_err(|e| YnabError::Config(format!("Failed to write credentials: {e}")))?;
     }
 
     Ok(())
@@ -522,21 +531,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn explicit_token_beats_environment() {
-        // SAFETY: this is the only test in the workspace that touches YNAB_ACCESS_TOKEN,
-        // and it restores the variable before returning.
-        unsafe {
-            std::env::set_var("YNAB_ACCESS_TOKEN", "from-env");
-        }
+    fn explicit_beats_env() {
+        assert_eq!(
+            first_present(Some("from-flag"), Some("from-env".to_string())),
+            Some("from-flag".to_string())
+        );
+    }
 
-        let result = resolve_token(Some("from-flag"));
+    #[test]
+    fn env_used_when_explicit_is_none() {
+        assert_eq!(
+            first_present(None, Some("from-env".to_string())),
+            Some("from-env".to_string())
+        );
+    }
 
-        // SAFETY: this is the only test in the workspace that touches YNAB_ACCESS_TOKEN,
-        // and it restores the variable before returning.
-        unsafe {
-            std::env::remove_var("YNAB_ACCESS_TOKEN");
-        }
+    #[test]
+    fn empty_explicit_falls_through_to_env() {
+        assert_eq!(
+            first_present(Some(""), Some("from-env".to_string())),
+            Some("from-env".to_string())
+        );
+    }
 
-        assert_eq!(result.unwrap(), "from-flag");
+    #[test]
+    fn both_empty_gives_none() {
+        assert_eq!(first_present(Some(""), Some(String::new())), None);
+        assert_eq!(first_present(None, None), None);
     }
 }
